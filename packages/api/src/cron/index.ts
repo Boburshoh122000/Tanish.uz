@@ -7,6 +7,7 @@ import { processIntroExpiry } from './intro-expiry.js';
 import { processEloDecay } from './elo-decay.js';
 import { processReEngagement } from './re-engagement.js';
 import { processPremiumExpiry } from './premium-expiry.js';
+import { computeDailyMetrics } from './daily-metrics.js';
 
 interface CronDeps {
   prisma: PrismaClient;
@@ -21,14 +22,27 @@ const tasks: cron.ScheduledTask[] = [];
  * Register all cron jobs. Call once on server start.
  * 
  * Schedule (all times UTC → Tashkent = UTC+5):
+ *   02:00 UTC (07:00 Tashkent) — Daily metrics rollup (yesterday)
  *   03:00 UTC (08:00 Tashkent) — ELO decay + Redis rebuild
  *   04:00 UTC (09:00 Tashkent) — Daily batch generation + notifications
  *   Every hour                  — Intro expiry + warnings
- *   06:00 UTC (11:00 Tashkent) — Re-engagement
  *   05:00 UTC (10:00 Tashkent) — Premium expiry check
+ *   06:00 UTC (11:00 Tashkent) — Re-engagement
  */
 export function registerCronJobs(deps: CronDeps): void {
   const { prisma, eloService, notificationService, webAppUrl } = deps;
+
+  // Daily metrics rollup — 02:00 UTC daily
+  tasks.push(
+    cron.schedule('0 2 * * *', async () => {
+      console.log('⏰ [CRON] Daily metrics rollup...');
+      try {
+        await computeDailyMetrics(prisma);
+      } catch (err) {
+        console.error('[CRON] Daily metrics failed:', err);
+      }
+    })
+  );
 
   // ELO decay + Redis rebuild — 03:00 UTC daily
   tasks.push(

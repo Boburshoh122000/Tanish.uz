@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
 import Fastify from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { registerWebhook } from './register-webhook.js';
+import { PREMIUM_DURATION_DAYS } from '@tanish/shared';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://tanish.uz';
@@ -12,15 +14,37 @@ if (!BOT_TOKEN) {
 }
 
 const bot = new Bot(BOT_TOKEN);
+const prisma = new PrismaClient();
 
-// /start command — opens Mini App
+// /start command — opens Mini App, handles referrals
 bot.command('start', async (ctx) => {
-  const startPayload = ctx.match; // handles ?start=ref_xxx
+  const startPayload = ctx.match;
+  const telegramId = ctx.from?.id;
 
-  // Check for referral
-  if (startPayload?.startsWith('ref_')) {
-    const referrerId = startPayload.replace('ref_', '');
-    console.log(`Referral from: ${referrerId}`);
+  // Handle referral: store the referral code on the user record
+  if (startPayload?.startsWith('ref_') && telegramId) {
+    const referralCode = startPayload.replace('ref_', '');
+    try {
+      // Find referrer by code
+      const referrer = await prisma.user.findUnique({
+        where: { referralCode },
+        select: { id: true },
+      });
+
+      if (referrer) {
+        // Link this user to referrer (if user exists and isn't already referred)
+        await prisma.user.updateMany({
+          where: {
+            telegramId: BigInt(telegramId),
+            referredById: null, // Don't overwrite existing referral
+          },
+          data: { referredById: referrer.id },
+        });
+        console.log(`🎁 Referral linked: code=${referralCode}, newUser=${telegramId}`);
+      }
+    } catch (err) {
+      console.error('Referral linking failed:', err);
+    }
   }
 
   await ctx.reply(
@@ -39,17 +63,13 @@ bot.command('start', async (ctx) => {
   );
 });
 
-// /profile command — opens profile editor
+// /profile command
 bot.command('profile', async (ctx) => {
   const keyboard = new InlineKeyboard().webApp(
     '✏️ Edit Profile',
     `${WEBAPP_URL}?page=profile`
   );
-
-  await ctx.reply(
-    '📝 View and edit your Tanish profile:',
-    { reply_markup: keyboard }
-  );
+  await ctx.reply('📝 View and edit your Tanish profile:', { reply_markup: keyboard });
 });
 
 // /help command
@@ -70,9 +90,56 @@ bot.command('help', async (ctx) => {
   );
 });
 
-// Handle pre_checkout_query (for Telegram Stars payments)
+// /referral command — show referral link
+bot.command('referral', async (ctx) => {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+      select: { referralCode: true },
+    });
+
+    if (!user) {
+      await ctx.reply('Open Tanish and complete your profile first!');
+      return;
+    }
+
+    let code = user.referralCode;
+    if (!code) {
+      const crypto = await import('node:crypto');
+      code = crypto.randomBytes(4).toString('hex');
+      await prisma.user.update({
+        where: { telegramId: BigInt(telegramId) },
+        data: { referralCode: code },
+      });
+    }
+
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'TanishBot';
+    const link = `https://t.me/${botUsername}?start=ref_${code}`;
+
+    await ctx.reply(
+      `🎁 *Your referral link:*\n\n\`${link}\`\n\n` +
+      'Share with friends! When they complete their profile, you both get a bonus match.',
+      { parse_mode: 'Markdown' }
+    );
+  } catch (err) {
+    console.error('Referral command failed:', err);
+    await ctx.reply('Something went wrong. Try again later.');
+  }
+});
+
+// ===== Telegram Stars Payments =====
+
 bot.on('pre_checkout_query', async (ctx) => {
   try {
+    // Validate the payload
+    const payload = JSON.parse(ctx.preCheckoutQuery.invoice_payload);
+    if (!payload.userId || !payload.plan) {
+      await ctx.answerPreCheckoutQuery(false, { error_message: 'Invalid payment data.' });
+      return;
+    }
     await ctx.answerPreCheckoutQuery(true);
   } catch (error) {
     console.error('Pre-checkout error:', error);
@@ -80,15 +147,58 @@ bot.on('pre_checkout_query', async (ctx) => {
   }
 });
 
-// Handle successful payments
 bot.on('message:successful_payment', async (ctx) => {
   const payment = ctx.message.successful_payment;
-  console.log('💰 Payment received:', {
-    amount: payment.total_amount,
-    currency: payment.currency,
-    telegramPaymentChargeId: payment.telegram_payment_charge_id,
-    userId: ctx.from?.id,
-  });
+  const telegramId = ctx.from?.id;
+
+  if (!telegramId) return;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+      select: { id: true },
+    });
+
+    if (!user) {
+      console.error(`Payment received but user not found: telegramId=${telegramId}`);
+      return;
+    }
+
+    const premiumUntil = new Date(Date.now() + PREMIUM_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+    // Activate premium
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isPremium: true, premiumUntil },
+    });
+
+    // Log payment
+    await prisma.payment.create({
+      data: {
+        userId: user.id,
+        amount: payment.total_amount,
+        transactionId: payment.telegram_payment_charge_id,
+        plan: 'monthly',
+      },
+    });
+
+    // Track event
+    await prisma.event.create({
+      data: {
+        userId: user.id,
+        type: 'premium_purchased',
+        metadata: {
+          amount: payment.total_amount,
+          currency: payment.currency,
+          transactionId: payment.telegram_payment_charge_id,
+        },
+      },
+    });
+
+    console.log(`⭐ Premium activated: user=${user.id}, amount=${payment.total_amount} Stars`);
+  } catch (err) {
+    console.error('Payment processing failed:', err);
+  }
 
   await ctx.reply(
     '✨ Welcome to Tanish Premium!\n\n' +
@@ -106,7 +216,8 @@ bot.catch((err) => {
   console.error(`Error while handling update ${ctx.update.update_id}:`, err.error);
 });
 
-// Start bot
+// ===== Start =====
+
 async function start() {
   const webhookUrl = process.env.WEBHOOK_URL ||
     (process.env.RAILWAY_PUBLIC_DOMAIN
@@ -114,30 +225,35 @@ async function start() {
       : null);
 
   if (webhookUrl) {
-    // Production: webhook mode
     const app = Fastify({ logger: true });
-
     app.post('/bot/webhook', webhookCallback(bot, 'fastify'));
-
     app.get('/bot/health', async () => ({
       status: 'ok',
       bot: 'running',
       timestamp: new Date().toISOString(),
     }));
 
-    // Register webhook with Telegram
     await registerWebhook(bot);
 
     const PORT = parseInt(process.env.PORT || process.env.BOT_PORT || '3002', 10);
     await app.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`🤖 Bot webhook server running on port ${PORT}`);
   } else {
-    // Development: long polling
     console.log('🤖 Starting bot in long polling mode...');
     await bot.start({
       onStart: () => console.log('🤖 Tanish Bot is running!'),
     });
   }
+}
+
+// Graceful shutdown
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, async () => {
+    console.log(`Received ${signal}, shutting down bot...`);
+    await bot.stop();
+    await prisma.$disconnect();
+    process.exit(0);
+  });
 }
 
 start().catch((err) => {

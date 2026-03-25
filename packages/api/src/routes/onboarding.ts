@@ -3,6 +3,7 @@ import { authMiddleware } from '../auth/index.js';
 import { prisma, eloService } from '../index.js';
 import { onboardingSchema, LIMITS } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
+import { creditReferral } from './referrals.js';
 
 export async function onboardingRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -68,6 +69,18 @@ export async function onboardingRoutes(app: FastifyInstance) {
 
     // ELO boost for completing profile
     await eloService.adjustScore(userId, 'profile_complete', LIMITS.ELO_PROFILE_COMPLETE);
+
+    // Credit referral if user came via referral link
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referredById: true },
+    });
+    // referredById is set by the bot /start handler when ref_ param is present
+    // But if it was stored as a referralCode in metadata, handle it here
+    const referralCode = (request.query as any)?.ref;
+    if (referralCode && !currentUser?.referredById) {
+      await creditReferral(userId, referralCode);
+    }
 
     const updatedUser = await prisma.user.findUnique({
       where: { id: userId },

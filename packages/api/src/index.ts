@@ -17,6 +17,11 @@ import { reportRoutes } from './routes/reports.js';
 import { blockRoutes } from './routes/blocks.js';
 import { discoveryRoutes } from './routes/discovery.js';
 import { interestRoutes } from './routes/interests.js';
+import { uploadRoutes } from './routes/upload.js';
+import { premiumRoutes } from './routes/premium.js';
+import { referralRoutes } from './routes/referrals.js';
+import { adminRoutes } from './routes/admin.js';
+import { PremiumService } from './services/premium.service.js';
 
 // ===== Validate required env vars =====
 const REQUIRED_ENV = ['TELEGRAM_BOT_TOKEN', 'DATABASE_URL', 'JWT_SECRET'] as const;
@@ -35,6 +40,7 @@ const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 export const eloService = new EloService(prisma);
 export let notificationService: NotificationService | null = null;
+export let premiumService: PremiumService | null = null;
 
 const app = Fastify({
   logger: {
@@ -66,8 +72,8 @@ app.decorate('eloService', eloService);
 app.get('/api/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
-  version: '0.2.0',
-  phase: 2,
+  version: '0.3.0',
+  phase: 3,
 }));
 
 // ===== Routes =====
@@ -79,6 +85,10 @@ await app.register(reportRoutes, { prefix: '/api/reports' });
 await app.register(blockRoutes, { prefix: '/api/blocks' });
 await app.register(discoveryRoutes, { prefix: '/api/discovery' });
 await app.register(interestRoutes, { prefix: '/api/interests' });
+await app.register(uploadRoutes, { prefix: '/api/upload' });
+await app.register(premiumRoutes, { prefix: '/api/premium' });
+await app.register(referralRoutes, { prefix: '/api/referrals' });
+await app.register(adminRoutes, { prefix: '/api/admin' });
 
 // ===== Graceful shutdown =====
 const shutdown = async (signal: string) => {
@@ -113,6 +123,9 @@ try {
     app.log.warn('⚠️ Redis unavailable — running without notifications queue and ELO cache');
   }
 
+  // Initialize premium service (needs bot, works without Redis)
+  premiumService = new PremiumService(prisma, bot);
+
   // Register cron jobs (they handle null notificationService gracefully)
   registerCronJobs({
     prisma,
@@ -122,7 +135,7 @@ try {
   });
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
-  app.log.info(`🚀 Tanish API v0.2.0 (Phase 2) running on port ${PORT}`);
+  app.log.info(`🚀 Tanish API v0.3.0 (Phase 3) running on port ${PORT}`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
