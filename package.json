@@ -1,0 +1,21 @@
+{
+  "name": "tanish",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tanish — People-discovery Telegram Mini App",
+  "scripts": {
+    "dev:api": "pnpm --filter @tanish/api dev",
+    "dev:bot": "pnpm --filter @tanish/bot dev",
+    "dev:web": "pnpm --filter @tanish/web dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @tanish/prisma generate",
+    "db:migrate": "pnpm --filter @tanish/prisma migrate",
+    "db:seed": "pnpm --filter @tanish/prisma seed",
+    "db:push": "pnpm --filter @tanish/prisma push",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

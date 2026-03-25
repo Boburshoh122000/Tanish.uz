@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Enums =====
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum LookingFor {
+  NETWORKING
+  FRIENDSHIP
+  RELATIONSHIP
+}
+
+enum Language {
+  UZBEK
+  RUSSIAN
+  ENGLISH
+}
+
+enum InterestCategory {
+  TECH
+  BUSINESS
+  CREATIVE
+  SPORTS
+  LIFESTYLE
+  ACADEMIC
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum IntroStatus {
+  PENDING
+  ANSWERED
+  MATCHED
+  EXPIRED
+}
+
+enum ReportReason {
+  FAKE_PROFILE
+  HARASSMENT
+  SPAM
+  INAPPROPRIATE_CONTENT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTIONED
+  DISMISSED
+}
+
+// ===== Models =====
+
+model User {
+  id              String       @id @default(cuid())
+  telegramId      BigInt       @unique
+  username        String?
+  firstName       String
+  lastName        String?
+  gender          Gender
+  lookingFor      LookingFor[]
+  birthDate       DateTime
+  city            String       @default("Tashkent")
+  bio             String?      @db.VarChar(300)
+  currentRole     String?      @db.VarChar(100)
+  university      String?
+  workplace       String?
+
+  // Profile
+  photos    Photo[]
+  interests UserInterest[]
+  languages Language[]
+
+  // Matching
+  eloScore       Float   @default(1000)
+  dailyLikesUsed Int     @default(0)
+  lastActiveAt   DateTime @default(now())
+  profileComplete Boolean @default(false)
+  verified       Boolean @default(false)
+
+  // Settings
+  minAge     Int     @default(18)
+  maxAge     Int     @default(28)
+  genderPref Gender?
+  isPremium  Boolean  @default(false)
+  premiumUntil DateTime?
+  preferredLanguage Language @default(RUSSIAN)
+
+  // Notification preferences
+  notifyDailyBatch    Boolean @default(true)
+  notifyIntros        Boolean @default(true)
+  notifyMatches       Boolean @default(true)
+  notifyReEngagement  Boolean @default(true)
+
+  // Safety
+  status      UserStatus @default(ACTIVE)
+  reportCount Int        @default(0)
+  pausedAt    DateTime?
+
+  // Ambassador
+  isAmbassador Boolean @default(false)
+  referralCode String? @unique
+  referredById String?
+  referredBy   User?   @relation("referrals", fields: [referredById], references: [id])
+  referrals    User[]  @relation("referrals")
+
+  // Relations
+  sentLikes     Like[]  @relation("sender")
+  receivedLikes Like[]  @relation("receiver")
+  sentIntros    Intro[] @relation("introSender")
+  receivedIntros Intro[] @relation("introReceiver")
+  reports       Report[] @relation("reporter")
+  reportedBy    Report[] @relation("reported")
+  blocksCreated Block[]  @relation("blocker")
+  blockedBy     Block[]  @relation("blocked")
+  dailyBatches  DailyBatch[]
+  events        Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city, gender, status])
+  @@index([eloScore])
+  @@index([lastActiveAt])
+}
+
+model Photo {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url      String
+  position Int     // 0 = primary
+  verified Boolean @default(false)
+
+  @@index([userId])
+}
+
+model Interest {
+  id       String           @id @default(cuid())
+  name     String           @unique
+  nameUz   String
+  nameRu   String
+  category InterestCategory
+  icon     String?
+  users    UserInterest[]
+}
+
+model UserInterest {
+  userId     String
+  interestId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([userId, interestId])
+}
+
+model Like {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  sender     User     @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  isLike     Boolean  // true = like, false = pass
+  createdAt  DateTime @default(now())
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, isLike])
+}
+
+model Intro {
+  id             String      @id @default(cuid())
+  senderId       String
+  receiverId     String
+  sender         User        @relation("introSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User        @relation("introReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  question       String
+  senderAnswer   String?     @db.VarChar(500)
+  receiverAnswer String?     @db.VarChar(500)
+  status         IntroStatus @default(PENDING)
+  chatUnlocked   Boolean     @default(false)
+  expiresAt      DateTime
+  createdAt      DateTime    @default(now())
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String
+  reportedId String
+  reporter   User         @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported   User         @relation("reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  reason     ReportReason
+  details    String?      @db.VarChar(500)
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  @@index([reportedId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker   User     @relation("blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model DailyBatch {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profiles  String[] // Array of suggested user IDs
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+}
+
+model DailyMetrics {
+  id                   String   @id @default(cuid())
+  date                 DateTime @unique @db.Date
+  dau                  Int
+  newSignups           Int
+  onboardingStarts     Int
+  onboardingCompletes  Int
+  introsSent           Int
+  introsAnswered       Int
+  introsDeclined       Int
+  introsExpired        Int
+  matchesCreated       Int
+  chatsOpened          Int
+  premiumViews         Int
+  premiumPurchases     Int
+  activeMales          Int
+  activeFemales        Int
+  avgElo               Float
+  revenue              Int      // in Telegram Stars
+  createdAt            DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Int      // in Telegram Stars
+  transactionId String   @unique
+  plan          String   // "monthly"
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
