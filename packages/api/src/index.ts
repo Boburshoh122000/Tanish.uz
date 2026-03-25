@@ -36,7 +36,7 @@ for (const key of REQUIRED_ENV) {
 export const prisma = new PrismaClient();
 
 // Bot instance for sending notifications (no polling — bot package handles that)
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 export const eloService = new EloService(prisma);
 export let notificationService: NotificationService | null = null;
