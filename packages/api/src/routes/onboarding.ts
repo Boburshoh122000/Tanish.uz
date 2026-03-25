@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
-import { onboardingSchema } from '@tanish/shared';
+import { prisma, eloService } from '../index.js';
+import { onboardingSchema, LIMITS } from '@tanish/shared';
+import { filterContent } from '../services/content-filter.js';
 
 export async function onboardingRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -21,6 +22,22 @@ export async function onboardingRoutes(app: FastifyInstance) {
 
     const { interestIds, ...userData } = body.data;
 
+    // Filter bio content
+    let cleanBio = userData.bio;
+    if (cleanBio) {
+      const filtered = filterContent(cleanBio);
+      cleanBio = filtered.text;
+      if (filtered.flagged) {
+        await prisma.event.create({
+          data: {
+            userId,
+            type: 'content_flagged',
+            metadata: { context: 'onboarding_bio', flags: filtered.flags },
+          },
+        });
+      }
+    }
+
     // Update user with onboarding data
     const user = await prisma.user.update({
       where: { id: userId },
@@ -32,7 +49,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
         currentRole: userData.currentRole,
         university: userData.university,
         workplace: userData.workplace,
-        bio: userData.bio,
+        bio: cleanBio,
         languages: userData.languages,
         profileComplete: true,
       },
@@ -48,6 +65,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
     await prisma.event.create({
       data: { userId, type: 'onboarding_complete' },
     });
+
+    // ELO boost for completing profile
+    await eloService.adjustScore(userId, 'profile_complete', LIMITS.ELO_PROFILE_COMPLETE);
 
     const updatedUser = await prisma.user.findUnique({
       where: { id: userId },

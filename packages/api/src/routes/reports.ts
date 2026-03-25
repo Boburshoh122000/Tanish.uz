@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
+import { prisma, eloService } from '../index.js';
 import { createReportSchema, LIMITS } from '@tanish/shared';
 
 export async function reportRoutes(app: FastifyInstance) {
@@ -46,9 +46,11 @@ export async function reportRoutes(app: FastifyInstance) {
       where: { id: reportedId },
       data: {
         reportCount: { increment: 1 },
-        eloScore: { increment: LIMITS.ELO_REPORTED },
       },
     });
+
+    // ELO penalty via service (handles clamping + Redis sync)
+    await eloService.adjustScore(reportedId, 'reported', LIMITS.ELO_REPORTED);
 
     // Auto-suspend if threshold reached
     if (reportedUser.reportCount >= LIMITS.AUTO_SUSPEND_REPORT_THRESHOLD) {

@@ -1,8 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
+import { prisma, eloService, notificationService } from '../index.js';
 import { createIntroSchema, respondIntroSchema, LIMITS } from '@tanish/shared';
 import { generateIcebreaker } from '../services/icebreaker.js';
+import { filterIntroAnswer } from '../services/content-filter.js';
+
+const WEBAPP_URL = process.env.WEBAPP_URL || 'https://tanish.uz';
 
 export async function introRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -30,6 +33,7 @@ export async function introRoutes(app: FastifyInstance) {
     // Check if receiver exists and is active
     const receiver = await prisma.user.findUnique({
       where: { id: receiverId, status: 'ACTIVE' },
+      select: { id: true, telegramId: true, firstName: true },
     });
     if (!receiver) {
       return reply.status(404).send({ success: false, error: 'User not found' });
@@ -43,7 +47,7 @@ export async function introRoutes(app: FastifyInstance) {
       return reply.status(409).send({ success: false, error: 'Active intro already exists' });
     }
 
-    // Check if blocked
+    // Check if blocked (bidirectional)
     const block = await prisma.block.findFirst({
       where: {
         OR: [
@@ -57,7 +61,10 @@ export async function introRoutes(app: FastifyInstance) {
     }
 
     // Check daily intro limit
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPremium: true, firstName: true },
+    });
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -69,7 +76,20 @@ export async function introRoutes(app: FastifyInstance) {
     if (todayIntros >= limit) {
       return reply.status(429).send({
         success: false,
-        error: `Daily intro limit reached (${limit}). ${!user!.isPremium ? 'Upgrade to Premium for more!' : ''}`,
+        error: `Daily intro limit reached (${limit}).${!user!.isPremium ? ' Upgrade to Premium for more!' : ''}`,
+      });
+    }
+
+    // Filter the answer content
+    const filtered = filterIntroAnswer(answer);
+    if (filtered.flagged) {
+      // Log flagged content for admin review but allow through
+      await prisma.event.create({
+        data: {
+          userId,
+          type: 'content_flagged',
+          metadata: { context: 'intro_answer', flags: filtered.flags, original: filtered.original },
+        },
       });
     }
 
@@ -82,29 +102,32 @@ export async function introRoutes(app: FastifyInstance) {
         senderId: userId,
         receiverId,
         question,
-        senderAnswer: answer,
+        senderAnswer: filtered.text,
         expiresAt: new Date(Date.now() + LIMITS.INTRO_EXPIRY_HOURS * 60 * 60 * 1000),
-      },
-      include: {
-        sender: {
-          select: { id: true, firstName: true, photos: { take: 1, orderBy: { position: 'asc' } } },
-        },
       },
     });
 
     // Track events
     await prisma.event.createMany({
       data: [
-        { userId, type: 'intro_sent', metadata: { receiverId } },
-        { userId: receiverId, type: 'intro_received', metadata: { senderId: userId } },
+        { userId, type: 'intro_sent', metadata: { receiverId, introId: intro.id } },
+        { userId: receiverId, type: 'intro_received', metadata: { senderId: userId, introId: intro.id } },
       ],
     });
 
-    // ELO boost for receiver
-    await prisma.user.update({
-      where: { id: receiverId },
-      data: { eloScore: { increment: LIMITS.ELO_INTRO_RECEIVED } },
-    });
+    // ELO boost for receiver (they're desirable)
+    await eloService.adjustScore(receiverId, 'intro_received', LIMITS.ELO_INTRO_RECEIVED);
+
+    // 🔔 Notify receiver
+    if (notificationService) {
+      await notificationService.notifyNewIntro(
+        receiverId,
+        Number(receiver.telegramId),
+        user!.firstName,
+        filtered.text,
+        WEBAPP_URL
+      );
+    }
 
     return reply.send({
       success: true,
@@ -128,7 +151,10 @@ export async function introRoutes(app: FastifyInstance) {
 
     const intro = await prisma.intro.findUnique({
       where: { id },
-      include: { sender: true, receiver: true },
+      include: {
+        sender: { select: { id: true, username: true, firstName: true, telegramId: true } },
+        receiver: { select: { id: true, username: true, firstName: true, telegramId: true } },
+      },
     });
 
     if (!intro) {
@@ -143,31 +169,41 @@ export async function introRoutes(app: FastifyInstance) {
       return reply.status(400).send({ success: false, error: 'Intro is no longer pending' });
     }
 
+    // DECLINE
     if (body.data.decline) {
-      // Decline silently
       await prisma.intro.update({
         where: { id },
-        data: { status: 'EXPIRED' },
+        data: { status: 'EXPIRED' }, // "EXPIRED" hides that it was declined
       });
 
       await prisma.event.create({
         data: { userId, type: 'intro_declined', metadata: { introId: id } },
       });
 
-      // Slight ELO penalty for sender
-      await prisma.user.update({
-        where: { id: intro.senderId },
-        data: { eloScore: { increment: LIMITS.ELO_INTRO_DECLINED } },
-      });
+      // Slight ELO penalty for sender (their intro didn't land)
+      await eloService.adjustScore(intro.senderId, 'intro_declined', LIMITS.ELO_INTRO_DECLINED);
 
-      return reply.send({ success: true, message: 'Intro declined' });
+      return reply.send({ success: true, data: { status: 'declined' } });
     }
 
-    // Answer — create match
+    // ANSWER — create match
+    const answerText = body.data.answer!;
+    const filtered = filterIntroAnswer(answerText);
+
+    if (filtered.flagged) {
+      await prisma.event.create({
+        data: {
+          userId,
+          type: 'content_flagged',
+          metadata: { context: 'intro_response', flags: filtered.flags, original: filtered.original },
+        },
+      });
+    }
+
     const updatedIntro = await prisma.intro.update({
       where: { id },
       data: {
-        receiverAnswer: body.data.answer,
+        receiverAnswer: filtered.text,
         status: 'MATCHED',
         chatUnlocked: true,
       },
@@ -183,23 +219,43 @@ export async function introRoutes(app: FastifyInstance) {
     });
 
     // ELO boost for both
-    await prisma.user.updateMany({
-      where: { id: { in: [userId, intro.senderId] } },
-      data: { eloScore: { increment: LIMITS.ELO_MATCH_CREATED } },
-    });
+    await Promise.all([
+      eloService.adjustScore(userId, 'match_created', LIMITS.ELO_MATCH_CREATED),
+      eloService.adjustScore(intro.senderId, 'match_created', LIMITS.ELO_MATCH_CREATED),
+    ]);
+
+    // 🔔 Notify BOTH users about the match
+    if (notificationService) {
+      // Notify sender
+      await notificationService.notifyMatch(
+        intro.senderId,
+        Number(intro.sender.telegramId),
+        intro.receiver.firstName,
+        intro.receiver.username,
+        WEBAPP_URL
+      );
+
+      // Notify receiver (current user)
+      await notificationService.notifyMatch(
+        userId,
+        Number(intro.receiver.telegramId),
+        intro.sender.firstName,
+        intro.sender.username,
+        WEBAPP_URL
+      );
+    }
 
     return reply.send({
       success: true,
       data: {
-        ...updatedIntro,
-        senderUsername: intro.sender.username,
-        receiverUsername: intro.receiver.username,
+        status: 'matched',
+        introId: updatedIntro.id,
         chatLink: intro.sender.username ? `https://t.me/${intro.sender.username}` : null,
       },
     });
   });
 
-  // GET /api/intros/pending — get pending intros for current user
+  // GET /api/intros/pending — pending intros for current user (as receiver)
   app.get('/pending', async (request, reply) => {
     const userId = (request as any).userId;
 
@@ -221,7 +277,7 @@ export async function introRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: intros });
   });
 
-  // GET /api/intros/matched — get matched intros
+  // GET /api/intros/matched — all matches
   app.get('/matched', async (request, reply) => {
     const userId = (request as any).userId;
 
@@ -249,7 +305,6 @@ export async function introRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Map to show "other" user
     const mapped = intros.map((intro) => {
       const otherUser = intro.senderId === userId ? intro.receiver : intro.sender;
       return {
@@ -264,5 +319,27 @@ export async function introRoutes(app: FastifyInstance) {
     });
 
     return reply.send({ success: true, data: mapped });
+  });
+
+  // GET /api/intros/sent — intros I sent (to see status)
+  app.get('/sent', async (request, reply) => {
+    const userId = (request as any).userId;
+
+    const intros = await prisma.intro.findMany({
+      where: { senderId: userId },
+      include: {
+        receiver: {
+          select: {
+            id: true, firstName: true, lastName: true,
+            currentRole: true, verified: true,
+            photos: { take: 1, orderBy: { position: 'asc' } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    return reply.send({ success: true, data: intros });
   });
 }

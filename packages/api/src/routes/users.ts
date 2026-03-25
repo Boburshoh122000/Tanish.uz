@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
 import { prisma } from '../index.js';
 import { profileUpdateSchema } from '@tanish/shared';
+import { filterContent } from '../services/content-filter.js';
 
 export async function userRoutes(app: FastifyInstance) {
   // All user routes require auth
@@ -43,6 +44,21 @@ export async function userRoutes(app: FastifyInstance) {
     }
 
     const { interestIds, ...updateData } = body.data;
+
+    // Filter bio content if provided
+    if (updateData.bio) {
+      const filtered = filterContent(updateData.bio);
+      updateData.bio = filtered.text;
+      if (filtered.flagged) {
+        await prisma.event.create({
+          data: {
+            userId,
+            type: 'content_flagged',
+            metadata: { context: 'profile_bio', flags: filtered.flags },
+          },
+        });
+      }
+    }
 
     // Update user fields
     const user = await prisma.user.update({
