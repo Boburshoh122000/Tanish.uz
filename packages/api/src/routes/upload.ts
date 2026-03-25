@@ -79,20 +79,22 @@ export async function uploadRoutes(app: FastifyInstance) {
       }
 
       // Compress with sharp: resize to max dimension, quality 80, output as JPEG
-      buffer = (await sharp(buffer)
-        .resize(MAX_DIMENSION, MAX_DIMENSION, {
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
-        .jpeg({ quality: 80, progressive: true })
-        .toBuffer()) as Buffer;
+      buffer = Buffer.from(
+        await sharp(buffer)
+          .resize(MAX_DIMENSION, MAX_DIMENSION, {
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .jpeg({ quality: 80, progressive: true })
+          .toBuffer(),
+      );
 
       // Verify compressed size
       if (buffer.length > MAX_COMPRESSED_BYTES) {
         // Try harder compression
-        buffer = (await sharp(buffer)
-          .jpeg({ quality: 60, progressive: true })
-          .toBuffer()) as Buffer;
+        buffer = Buffer.from(
+          await sharp(buffer).jpeg({ quality: 60, progressive: true }).toBuffer(),
+        );
       }
 
       // Upload to R2
