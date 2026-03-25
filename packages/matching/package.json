@@ -1,18 +1,24 @@
 {
-  "name": "@tanish/matching",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@tanish/shared": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.5.0"
-  }
+    "name": "@tanish/matching",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+          ".": {
+                  "types": "./src/index.ts",
+                  "import": "./dist/index.js"
+          }
+    },
+    "scripts": {
+          "build": "tsc",
+          "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+          "@tanish/shared": "workspace:*"
+    },
+    "devDependencies": {
+          "typescript": "^5.5.0"
+    }
 }
