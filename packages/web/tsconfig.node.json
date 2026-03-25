@@ -7,8 +7,12 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
     "strict": true
   },
   "include": ["vite.config.ts"]
 }
+

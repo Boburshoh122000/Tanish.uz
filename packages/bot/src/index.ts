@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
 import Fastify from 'fastify';
+import { registerWebhook } from './register-webhook.js';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://tanish.uz';
-const BOT_WEBHOOK_URL = process.env.BOT_WEBHOOK_URL;
 
 if (!BOT_TOKEN) {
   console.error('❌ TELEGRAM_BOT_TOKEN is required');
@@ -20,7 +20,6 @@ bot.command('start', async (ctx) => {
   // Check for referral
   if (startPayload?.startsWith('ref_')) {
     const referrerId = startPayload.replace('ref_', '');
-    // Store referral info (handled by API when user authenticates)
     console.log(`Referral from: ${referrerId}`);
   }
 
@@ -109,7 +108,12 @@ bot.catch((err) => {
 
 // Start bot
 async function start() {
-  if (BOT_WEBHOOK_URL) {
+  const webhookUrl = process.env.WEBHOOK_URL ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : null);
+
+  if (webhookUrl) {
     // Production: webhook mode
     const app = Fastify({ logger: true });
 
@@ -121,10 +125,10 @@ async function start() {
       timestamp: new Date().toISOString(),
     }));
 
-    await bot.api.setWebhook(BOT_WEBHOOK_URL);
-    console.log(`🤖 Bot webhook set to: ${BOT_WEBHOOK_URL}`);
+    // Register webhook with Telegram
+    await registerWebhook(bot);
 
-    const PORT = parseInt(process.env.BOT_PORT || '3002', 10);
+    const PORT = parseInt(process.env.PORT || process.env.BOT_PORT || '3002', 10);
     await app.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`🤖 Bot webhook server running on port ${PORT}`);
   } else {

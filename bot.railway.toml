@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tanish/shared build && pnpm --filter @tanish/bot build"
+
+[deploy]
+startCommand = "pnpm --filter @tanish/bot start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
