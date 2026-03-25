@@ -128,7 +128,7 @@ export default function StepFinal({ onNext }: StepProps) {
           {['UZBEK', 'RUSSIAN', 'ENGLISH'].map((lang) => {
             const labels: Record<string, string> = { UZBEK: '🇺🇿 O\'zbek', RUSSIAN: '🇷🇺 Русский', ENGLISH: '🇬🇧 English' };
             const current = onboardingData.languages || ['RUSSIAN'];
-            const isSelected = current.includes(lang as any);
+            const isSelected = (current as string[]).includes(lang);
             return (
               <button
                 key={lang}

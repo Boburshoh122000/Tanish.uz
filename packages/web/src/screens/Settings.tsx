@@ -13,11 +13,11 @@ export default function Settings() {
         title: 'Delete Account?',
         message: 'Your account will be scheduled for deletion. You have 7 days to reactivate by logging in again.',
         buttons: [
-          { id: 'cancel', type: 'cancel', text: 'Cancel' },
+          { id: 'cancel', type: 'cancel' },
           { id: 'delete', type: 'destructive', text: 'Delete' },
         ],
       },
-      async (btnId: string) => {
+      async (btnId?: string) => {
         if (btnId === 'delete') {
           await api.users.deleteAccount();
           WebApp.close();
