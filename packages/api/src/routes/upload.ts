@@ -79,20 +79,20 @@ export async function uploadRoutes(app: FastifyInstance) {
       }
 
       // Compress with sharp: resize to max dimension, quality 80, output as JPEG
-      buffer = await sharp(buffer)
+      buffer = (await sharp(buffer)
         .resize(MAX_DIMENSION, MAX_DIMENSION, {
           fit: 'inside',
           withoutEnlargement: true,
         })
         .jpeg({ quality: 80, progressive: true })
-        .toBuffer();
+        .toBuffer()) as Buffer;
 
       // Verify compressed size
       if (buffer.length > MAX_COMPRESSED_BYTES) {
         // Try harder compression
-        buffer = await sharp(buffer)
+        buffer = (await sharp(buffer)
           .jpeg({ quality: 60, progressive: true })
-          .toBuffer();
+          .toBuffer()) as Buffer;
       }
 
       // Upload to R2
@@ -154,7 +154,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       const key = urlToKey(photo.url);
       if (key) await deletePhoto(key);
     } catch (err) {
-      app.log.warn('R2 delete failed (continuing):', err);
+      app.log.warn({ err }, 'R2 delete failed (continuing)');
     }
 
     // Delete from database
