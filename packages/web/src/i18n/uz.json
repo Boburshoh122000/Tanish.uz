@@ -1,0 +1,220 @@
+{
+  "common": {
+    "continue": "Davom etish",
+    "back": "Orqaga",
+    "save": "Saqlash",
+    "cancel": "Bekor qilish",
+    "delete": "O'chirish",
+    "confirm": "Tasdiqlash",
+    "loading": "Yuklanmoqda...",
+    "error": "Xatolik yuz berdi",
+    "retry": "Qaytadan urinib ko'ring",
+    "done": "Tayyor",
+    "close": "Yopish",
+    "search": "Qidirish",
+    "selected": "{{count}} ta tanlandi",
+    "required": "Majburiy",
+    "optional": "Ixtiyoriy",
+    "maxChars": "{{count}}/{{max}} belgi",
+    "premium": "Premium"
+  },
+
+  "onboarding": {
+    "progress": "{{current}}/{{total}}-qadam",
+    "step1": {
+      "title": "Siz kimsiz?",
+      "gender": "Jinsingiz",
+      "male": "Erkak",
+      "female": "Ayol",
+      "lookingFor": "Nima qidiryapsiz?",
+      "networking": "Networking",
+      "friendship": "Do'stlik",
+      "relationship": "Munosabat",
+      "selectOne": "Kamida bittasini tanlang"
+    },
+    "step2": {
+      "title": "Nima bilan shug'ullanasiz?",
+      "city": "Shahar",
+      "birthDate": "Tug'ilgan sana",
+      "currentRole": "Hozirgi faoliyatingiz",
+      "rolePlaceholder": "WIUT talabasi, Uzum dizayneri...",
+      "ageError": "Yoshingiz 18 dan 35 gacha bo'lishi kerak"
+    },
+    "step3": {
+      "title": "Sizni nima qiziqtiradi?",
+      "subtitle": "5-8 ta qiziqish tanlang",
+      "counter": "{{count}}/{{max}} ta tanlandi",
+      "searchPlaceholder": "Qiziqishlarni qidirish...",
+      "categories": {
+        "TECH": "Texnologiya",
+        "BUSINESS": "Biznes",
+        "CREATIVE": "Ijod",
+        "SPORTS": "Sport",
+        "LIFESTYLE": "Turmush tarzi",
+        "ACADEMIC": "Fan va ta'lim"
+      }
+    },
+    "step4": {
+      "title": "Oxirgi qadam",
+      "bioLabel": "Hozir nima ustida ishlayapsiz?",
+      "bioPlaceholders": [
+        "Turistik agentliklar uchun ilova yaratyapman...",
+        "TDYuU da xalqaro huquqni o'qiyapman...",
+        "YouTube kanalim uchun video montajni o'rganyapman...",
+        "Onlayn do'kon ochyapman...",
+        "Chet elda magistraturaga tayyorlanayapman..."
+      ],
+      "photos": "Rasmlar qo'shing",
+      "photosSubtitle": "1-3 ta rasm yuklang. Birinchisi asosiy rasmingiz.",
+      "getStarted": "Boshlash"
+    }
+  },
+
+  "discovery": {
+    "title": "Bugungi tanishlar",
+    "remaining": "{{count}}/{{total}} qoldi",
+    "sayHi": "Salom aytish",
+    "pass": "O'tkazib yuborish",
+    "greatMatch": "Ajoyib moslik",
+    "goodMatch": "Yaxshi moslik",
+    "decentMatch": "Moslik",
+    "sharedInterests": "Umumiy qiziqishlar",
+    "empty": {
+      "title": "Ertaga qaytib keling",
+      "subtitle": "Keyingi tanishlar soat 9:00 da tayyor bo'ladi",
+      "premiumCta": "Ko'proq xohlaysizmi? Premiumga o'ting"
+    },
+    "noMatches": {
+      "title": "Siz uchun odamlar qidirilmoqda",
+      "subtitle": "Moslik olish uchun profilingizni to'liq to'ldiring!"
+    }
+  },
+
+  "intros": {
+    "title": "Tanishuv",
+    "pending": "Kutilmoqda",
+    "sent": "Yuborilgan",
+    "question": "Tanishuv savoli",
+    "theirAnswer": "Ularning javobi",
+    "yourAnswer": "Javobingiz",
+    "answerPlaceholder": "Javobingizni yozing (kamida 20 belgi)...",
+    "connect": "Bog'lanish",
+    "notInterested": "Qiziq emas",
+    "expired": "Muddati tugagan",
+    "expiresIn": "{{hours}} soatda tugaydi",
+    "empty": "Kiruvchi tanishuvlar yo'q",
+    "emptySubtitle": "Boshlash uchun tanishlar ro'yxatidan birovga salom ayting!"
+  },
+
+  "matches": {
+    "title": "Juftliklar",
+    "openChat": "Chatni ochish",
+    "empty": "Hali juftliklar yo'q",
+    "emptySubtitle": "Ikkalangiz ham savolga javob berganingizda, juftlik hosil bo'ladi!",
+    "matchedOn": "Moslik {{date}}"
+  },
+
+  "profile": {
+    "title": "Profil",
+    "edit": "Profilni tahrirlash",
+    "verified": "Tasdiqlangan",
+    "verifyNow": "Profilni tasdiqlash",
+    "verificationPending": "Tekshiruv kutilmoqda",
+    "photos": "Rasmlar",
+    "mainPhoto": "Asosiy",
+    "addPhoto": "Rasm qo'shish",
+    "basicInfo": "Asosiy ma'lumotlar",
+    "name": "Ism",
+    "birthDate": "Tug'ilgan sana",
+    "gender": "Jins",
+    "city": "Shahar",
+    "about": "O'zi haqida",
+    "currentRole": "Faoliyati",
+    "bio": "O'zi haqida",
+    "university": "Universitet",
+    "workplace": "Ish joyi",
+    "interests": "Qiziqishlar",
+    "preferences": "Sozlamalar",
+    "lookingFor": "Qidirish maqsadi",
+    "showMe": "Menga ko'rsatish",
+    "ageRange": "Yosh oralig'i",
+    "languages": "Tillar",
+    "both": "Ikkalasi ham",
+    "account": "Hisob",
+    "pauseProfile": "Profilni to'xtatish",
+    "deleteAccount": "Hisobni o'chirish",
+    "deleteConfirm": "Ishonchingiz komilmi? Qayta tiklash uchun 7 kuningiz bor.",
+    "completeness": "Profil {{percent}}% to'ldirilgan",
+    "addBioTip": "Tavsif qo'shing — 3 baravar ko'proq moslik oling",
+    "addPhotosTip": "3+ rasmli profillar 2 baravar ko'proq tanishuv oladi"
+  },
+
+  "settings": {
+    "title": "Sozlamalar",
+    "notifications": "Bildirishnomalar",
+    "dailyMatches": "Kunlik tanishlar",
+    "introNotifs": "Yangi tanishuvlar",
+    "matchNotifs": "Yangi juftliklar",
+    "reEngagement": "Eslatmalar",
+    "language": "Til",
+    "premium": "Premium",
+    "referral": "Do'stlarni taklif qilish",
+    "help": "Yordam va qo'llab-quvvatlash",
+    "about": "Tanish haqida",
+    "version": "Versiya {{version}}"
+  },
+
+  "premium": {
+    "title": "Tanish Premium",
+    "upgrade": "⭐ {{price}} Stars/oyiga obuna bo'lish",
+    "currentPlan": "Sizda Premium bor",
+    "daysLeft": "{{days}} kun qoldi",
+    "features": {
+      "matches": "Kuniga {{count}} ta moslik",
+      "intros": "Kuniga {{count}} ta tanishuv",
+      "whoLikes": "Sizni kim yoqtirishini bilib oling",
+      "boost": "Haftada bir marta profil busti",
+      "priority": "Ustuvor tanlash",
+      "badge": "Premium nishoni"
+    },
+    "free": "Bepul",
+    "premiumLabel": "Premium",
+    "comparison": "Tariflarni solishtirish"
+  },
+
+  "referral": {
+    "title": "Do'stlarni taklif qilish",
+    "subtitle": "Havolani ulashing. Do'stingiz profilini to'ldirganda, ikkalangiz ham bonus moslik olasiz!",
+    "copyLink": "Havolani nusxalash",
+    "copied": "Nusxalandi!",
+    "stats": "Sizning takliflaringiz",
+    "totalReferred": "Taklif qilingan do'stlar",
+    "completed": "Ro'yxatdan o'tganlar",
+    "bonusMatches": "Bonus mosliklar"
+  },
+
+  "safety": {
+    "report": "Shikoyat qilish",
+    "reportTitle": "Foydalanuvchiga shikoyat",
+    "reasons": {
+      "FAKE_PROFILE": "Soxta profil",
+      "HARASSMENT": "Tahqirlash yoki tazyiq",
+      "SPAM": "Spam yoki reklama",
+      "INAPPROPRIATE_CONTENT": "Nomaqbul kontent",
+      "OTHER": "Boshqa"
+    },
+    "reportDetails": "Qo'shimcha ma'lumot (ixtiyoriy)",
+    "reportSubmitted": "Shikoyat yuborildi. Biz ko'rib chiqamiz.",
+    "block": "Bloklash",
+    "blockConfirm": "Bu foydalanuvchini bloklaysizmi? U sizni ko'ra olmaydi va yoza olmaydi.",
+    "blocked": "Foydalanuvchi bloklandi",
+    "unblock": "Blokdan chiqarish"
+  },
+
+  "nav": {
+    "discover": "Kashfiyot",
+    "intros": "Tanishuv",
+    "matches": "Juftliklar",
+    "profile": "Profil"
+  }
+}

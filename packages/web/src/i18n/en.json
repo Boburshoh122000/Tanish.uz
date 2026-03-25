@@ -1,0 +1,220 @@
+{
+  "common": {
+    "continue": "Continue",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "done": "Done",
+    "close": "Close",
+    "search": "Search",
+    "selected": "{{count}} selected",
+    "required": "Required",
+    "optional": "Optional",
+    "maxChars": "{{count}}/{{max}} characters",
+    "premium": "Premium"
+  },
+
+  "onboarding": {
+    "progress": "Step {{current}} of {{total}}",
+    "step1": {
+      "title": "Who are you?",
+      "gender": "Your gender",
+      "male": "Male",
+      "female": "Female",
+      "lookingFor": "What are you looking for?",
+      "networking": "Networking",
+      "friendship": "Friendship",
+      "relationship": "Relationship",
+      "selectOne": "Select at least one"
+    },
+    "step2": {
+      "title": "What do you do?",
+      "city": "City",
+      "birthDate": "Date of birth",
+      "currentRole": "Current role",
+      "rolePlaceholder": "Student at WIUT, Designer at Uzum...",
+      "ageError": "You must be between 18 and 35"
+    },
+    "step3": {
+      "title": "What are you into?",
+      "subtitle": "Pick 5-8 interests",
+      "counter": "{{count}}/{{max}} selected",
+      "searchPlaceholder": "Search interests...",
+      "categories": {
+        "TECH": "Technology",
+        "BUSINESS": "Business",
+        "CREATIVE": "Creative",
+        "SPORTS": "Sports",
+        "LIFESTYLE": "Lifestyle",
+        "ACADEMIC": "Academic"
+      }
+    },
+    "step4": {
+      "title": "One more thing",
+      "bioLabel": "What are you working on right now?",
+      "bioPlaceholders": [
+        "Building an app to help tour agencies...",
+        "Studying international law at TSUL...",
+        "Learning video editing for my YouTube channel...",
+        "Launching an e-commerce brand...",
+        "Preparing for my Master's abroad..."
+      ],
+      "photos": "Add photos",
+      "photosSubtitle": "Upload 1-3 photos. First one is your main photo.",
+      "getStarted": "Get started"
+    }
+  },
+
+  "discovery": {
+    "title": "Today's matches",
+    "remaining": "{{count}}/{{total}} left",
+    "sayHi": "Say hi",
+    "pass": "Pass",
+    "greatMatch": "Great match",
+    "goodMatch": "Good match",
+    "decentMatch": "Match",
+    "sharedInterests": "Shared interests",
+    "empty": {
+      "title": "Come back tomorrow",
+      "subtitle": "Your next batch of matches will be ready at 9:00 AM",
+      "premiumCta": "Want more? Go Premium"
+    },
+    "noMatches": {
+      "title": "Still finding people for you",
+      "subtitle": "Make sure your profile is complete to get matched!"
+    }
+  },
+
+  "intros": {
+    "title": "Intros",
+    "pending": "Pending",
+    "sent": "Sent",
+    "question": "Icebreaker question",
+    "theirAnswer": "Their answer",
+    "yourAnswer": "Your answer",
+    "answerPlaceholder": "Write your answer (min 20 characters)...",
+    "connect": "Connect",
+    "notInterested": "Not interested",
+    "expired": "Expired",
+    "expiresIn": "Expires in {{hours}}h",
+    "empty": "No pending intros",
+    "emptySubtitle": "Say hi to someone in your matches to get started!"
+  },
+
+  "matches": {
+    "title": "Matches",
+    "openChat": "Open chat",
+    "empty": "No matches yet",
+    "emptySubtitle": "When both of you answer the icebreaker, you'll match!",
+    "matchedOn": "Matched {{date}}"
+  },
+
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit profile",
+    "verified": "Verified",
+    "verifyNow": "Verify profile",
+    "verificationPending": "Verification pending",
+    "photos": "Photos",
+    "mainPhoto": "Main",
+    "addPhoto": "Add photo",
+    "basicInfo": "Basic info",
+    "name": "Name",
+    "birthDate": "Date of birth",
+    "gender": "Gender",
+    "city": "City",
+    "about": "About",
+    "currentRole": "Current role",
+    "bio": "Bio",
+    "university": "University",
+    "workplace": "Workplace",
+    "interests": "Interests",
+    "preferences": "Preferences",
+    "lookingFor": "Looking for",
+    "showMe": "Show me",
+    "ageRange": "Age range",
+    "languages": "Languages",
+    "both": "Both",
+    "account": "Account",
+    "pauseProfile": "Pause profile",
+    "deleteAccount": "Delete account",
+    "deleteConfirm": "Are you sure? You have 7 days to reactivate.",
+    "completeness": "Profile {{percent}}% complete",
+    "addBioTip": "Add a bio to get 3x more matches",
+    "addPhotosTip": "Profiles with 3+ photos get 2x more intros"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "notifications": "Notifications",
+    "dailyMatches": "Daily matches",
+    "introNotifs": "New intros",
+    "matchNotifs": "New matches",
+    "reEngagement": "Reminders",
+    "language": "Language",
+    "premium": "Premium",
+    "referral": "Invite friends",
+    "help": "Help & support",
+    "about": "About Tanish",
+    "version": "Version {{version}}"
+  },
+
+  "premium": {
+    "title": "Tanish Premium",
+    "upgrade": "Upgrade for ⭐ {{price}} Stars/month",
+    "currentPlan": "You're on Premium",
+    "daysLeft": "{{days}} days remaining",
+    "features": {
+      "matches": "{{count}} daily matches",
+      "intros": "{{count}} daily intros",
+      "whoLikes": "See who likes you",
+      "boost": "Profile boost once per week",
+      "priority": "Priority matching",
+      "badge": "Premium badge"
+    },
+    "free": "Free",
+    "premiumLabel": "Premium",
+    "comparison": "Compare plans"
+  },
+
+  "referral": {
+    "title": "Invite friends",
+    "subtitle": "Share your link. When they complete their profile, you both get a bonus match!",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "stats": "Your referrals",
+    "totalReferred": "Friends invited",
+    "completed": "Completed signups",
+    "bonusMatches": "Bonus matches earned"
+  },
+
+  "safety": {
+    "report": "Report",
+    "reportTitle": "Report user",
+    "reasons": {
+      "FAKE_PROFILE": "Fake profile",
+      "HARASSMENT": "Harassment or abuse",
+      "SPAM": "Spam or promotion",
+      "INAPPROPRIATE_CONTENT": "Inappropriate content",
+      "OTHER": "Other"
+    },
+    "reportDetails": "Additional details (optional)",
+    "reportSubmitted": "Report submitted. We'll review it.",
+    "block": "Block",
+    "blockConfirm": "Block this user? They won't be able to see or contact you.",
+    "blocked": "User blocked",
+    "unblock": "Unblock"
+  },
+
+  "nav": {
+    "discover": "Discover",
+    "intros": "Intros",
+    "matches": "Matches",
+    "profile": "Profile"
+  }
+}

@@ -8,6 +8,7 @@ import { processEloDecay } from './elo-decay.js';
 import { processReEngagement } from './re-engagement.js';
 import { processPremiumExpiry } from './premium-expiry.js';
 import { computeDailyMetrics } from './daily-metrics.js';
+import { processWeeklySpark } from './weekly-spark.js';
 
 interface CronDeps {
   prisma: PrismaClient;
@@ -28,6 +29,7 @@ const tasks: cron.ScheduledTask[] = [];
  *   Every hour                  — Intro expiry + warnings
  *   05:00 UTC (10:00 Tashkent) — Premium expiry check
  *   06:00 UTC (11:00 Tashkent) — Re-engagement
+ *   13:00 UTC Fridays (18:00 Tashkent) — Weekly spark
  */
 export function registerCronJobs(deps: CronDeps): void {
   const { prisma, eloService, notificationService, webAppUrl } = deps;
@@ -99,6 +101,18 @@ export function registerCronJobs(deps: CronDeps): void {
         await processReEngagement(prisma, notificationService, webAppUrl);
       } catch (err) {
         console.error('[CRON] Re-engagement failed:', err);
+      }
+    })
+  );
+
+  // Weekly spark — Fridays 13:00 UTC (18:00 Tashkent)
+  tasks.push(
+    cron.schedule('0 13 * * 5', async () => {
+      console.log('⏰ [CRON] Weekly spark starting...');
+      try {
+        await processWeeklySpark(prisma, notificationService, webAppUrl);
+      } catch (err) {
+        console.error('[CRON] Weekly spark failed:', err);
       }
     })
   );
