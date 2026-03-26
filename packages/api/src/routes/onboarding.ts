@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma, eloService } from '../index.js';
-import { onboardingSchema, LIMITS } from '@tanish/shared';
+import { prisma, eloService, tracker } from '../index.js';
+import { onboardingSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
 import { creditReferral } from './referrals.js';
 
@@ -29,12 +29,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
       const filtered = filterContent(cleanBio);
       cleanBio = filtered.text;
       if (filtered.flagged) {
-        await prisma.event.create({
-          data: {
-            userId,
-            type: 'content_flagged',
-            metadata: { context: 'onboarding_bio', flags: filtered.flags },
-          },
+        tracker.track(EVENT_TYPES.CONTENT_FLAGGED, userId, {
+          context: 'onboarding_bio',
+          flags: filtered.flags,
         });
       }
     }
@@ -63,8 +60,13 @@ export async function onboardingRoutes(app: FastifyInstance) {
     });
 
     // Track event
-    await prisma.event.create({
-      data: { userId, type: 'onboarding_complete' },
+    const referralCode = (request.query as any)?.ref;
+    tracker.track(EVENT_TYPES.ONBOARDING_COMPLETE, userId, {
+      interestCount: interestIds.length,
+      hasBio: !!cleanBio,
+      hasUniversity: !!userData.university,
+      hasWorkplace: !!userData.workplace,
+      ...(referralCode ? { referralCode } : {}),
     });
 
     // ELO boost for completing profile
@@ -77,7 +79,6 @@ export async function onboardingRoutes(app: FastifyInstance) {
     });
     // referredById is set by the bot /start handler when ref_ param is present
     // But if it was stored as a referralCode in metadata, handle it here
-    const referralCode = (request.query as any)?.ref;
     if (referralCode && !currentUser?.referredById) {
       await creditReferral(userId, referralCode);
     }

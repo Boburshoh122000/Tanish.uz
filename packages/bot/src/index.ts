@@ -182,18 +182,7 @@ bot.on('message:successful_payment', async (ctx) => {
       },
     });
 
-    // Track event
-    await prisma.event.create({
-      data: {
-        userId: user.id,
-        type: 'premium_purchased',
-        metadata: {
-          amount: payment.total_amount,
-          currency: payment.currency,
-          transactionId: payment.telegram_payment_charge_id,
-        },
-      },
-    });
+    // Event tracking moved to premium.service.ts (single source of truth)
 
     console.log(`⭐ Premium activated: user=${user.id}, amount=${payment.total_amount} Stars`);
   } catch (err) {

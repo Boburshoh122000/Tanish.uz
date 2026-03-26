@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
-import { LIMITS } from '@tanish/shared';
+import { prisma, tracker } from '../index.js';
+import { LIMITS, EVENT_TYPES } from '@tanish/shared';
 import { rankCandidates } from '@tanish/matching';
 
 export async function discoveryRoutes(app: FastifyInstance) {
@@ -137,13 +137,11 @@ export async function discoveryRoutes(app: FastifyInstance) {
     });
 
     // Track event
-    await prisma.event.create({
-      data: {
-        userId,
-        type: isLike ? 'profile_liked' : 'profile_passed',
-        metadata: { profileId },
-      },
-    });
+    tracker.track(
+      isLike ? EVENT_TYPES.PROFILE_LIKED : EVENT_TYPES.PROFILE_PASSED,
+      userId,
+      { profileId },
+    );
 
     return reply.send({ success: true, data: { recorded: true } });
   });

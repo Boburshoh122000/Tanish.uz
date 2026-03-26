@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { validateInitData, createToken } from '../auth/index.js';
-import { prisma, bot } from '../index.js';
-import { telegramAuthSchema } from '@tanish/shared';
+import { prisma, bot, tracker } from '../index.js';
+import { telegramAuthSchema, EVENT_TYPES } from '@tanish/shared';
 import { uploadPhoto, isR2Configured } from '../services/r2.service.js';
 
 export async function authRoutes(app: FastifyInstance) {
@@ -70,13 +70,7 @@ export async function authRoutes(app: FastifyInstance) {
       });
 
       // Track event
-      await prisma.event.create({
-        data: {
-          userId: user!.id,
-          type: 'app_open',
-          metadata: { isNewUser: true },
-        },
-      });
+      tracker.track(EVENT_TYPES.APP_OPEN, user!.id, { isNewUser: true });
     } else {
       // ===== RETURNING USER — sync Telegram profile data =====
       const updates: Record<string, string> = {};
@@ -99,12 +93,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       // Track event
-      await prisma.event.create({
-        data: {
-          userId: user.id,
-          type: 'app_open',
-        },
-      });
+      tracker.track(EVENT_TYPES.APP_OPEN, user.id, { isNewUser: false });
     }
 
     const token = createToken(user!.id, user!.telegramId);

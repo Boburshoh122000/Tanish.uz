@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { EVENT_TYPES } from '@tanish/shared';
 import type { NotificationService } from '../services/notification.service.js';
+import type { TrackingService } from '../services/tracking.service.js';
 
 /**
  * Check and expire premium subscriptions.
@@ -8,7 +10,8 @@ import type { NotificationService } from '../services/notification.service.js';
 export async function processPremiumExpiry(
   prisma: PrismaClient,
   notificationService: NotificationService | null,
-  webAppUrl: string
+  webAppUrl: string,
+  tracker?: TrackingService,
 ): Promise<{ expired: number }> {
   const now = new Date();
 
@@ -51,12 +54,11 @@ export async function processPremiumExpiry(
   }
 
   // Track events
-  await prisma.event.createMany({
-    data: expiredUsers.map((u) => ({
-      userId: u.id,
-      type: 'premium_expired',
-    })),
-  });
+  if (tracker) {
+    tracker.trackMany(
+      expiredUsers.map((u) => ({ type: EVENT_TYPES.PREMIUM_EXPIRED, userId: u.id, metadata: {} })),
+    );
+  }
 
   console.log(`⭐ Premium expiry: ${expiredUsers.length} subscriptions expired`);
   return { expired: expiredUsers.length };

@@ -56,20 +56,6 @@ export class EloService {
       console.error('Redis ELO sync failed:', err);
     }
 
-    // Log the adjustment
-    await this.prisma.event.create({
-      data: {
-        userId,
-        type: 'elo_adjustment',
-        metadata: {
-          event,
-          delta: actualDelta,
-          oldScore: user.eloScore,
-          newScore,
-        },
-      },
-    });
-
     return {
       userId,
       event,

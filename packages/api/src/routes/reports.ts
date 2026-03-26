@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma, eloService } from '../index.js';
-import { createReportSchema, LIMITS } from '@tanish/shared';
+import { prisma, eloService, tracker } from '../index.js';
+import { createReportSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
 
 export async function reportRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -61,13 +61,7 @@ export async function reportRoutes(app: FastifyInstance) {
     }
 
     // Track event
-    await prisma.event.create({
-      data: {
-        userId,
-        type: 'report_submitted',
-        metadata: { reportedId, reason },
-      },
-    });
+    tracker.track(EVENT_TYPES.REPORT_SUBMITTED, userId, { reportedId, reason });
 
     return reply.send({
       success: true,

@@ -1,12 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import { Bot } from 'grammy';
-import { PREMIUM_PRICE_STARS, PREMIUM_PROMO_PRICE_STARS, PREMIUM_DURATION_DAYS } from '@tanish/shared';
+import { PREMIUM_PRICE_STARS, PREMIUM_PROMO_PRICE_STARS, PREMIUM_DURATION_DAYS, EVENT_TYPES } from '@tanish/shared';
+import type { TrackingService } from './tracking.service.js';
 
 export class PremiumService {
+  private tracker: TrackingService | null = null;
+
   constructor(
     private prisma: PrismaClient,
-    private bot: Bot
+    private bot: Bot,
   ) {}
+
+  /** Late-bind tracker to avoid circular import */
+  setTracker(tracker: TrackingService): void {
+    this.tracker = tracker;
+  }
 
   /**
    * Create a Telegram Stars invoice link for premium subscription.
@@ -35,9 +43,7 @@ export class PremiumService {
     );
 
     // Track premium page view
-    await this.prisma.event.create({
-      data: { userId, type: 'premium_viewed' },
-    });
+    this.tracker?.track(EVENT_TYPES.PREMIUM_VIEWED, userId, { isPromo: promo });
 
     return invoiceLink;
   }
@@ -81,14 +87,8 @@ export class PremiumService {
       },
     });
 
-    // Track events
-    await this.prisma.event.create({
-      data: {
-        userId: user.id,
-        type: 'premium_purchased',
-        metadata: { amount, transactionId },
-      },
-    });
+    // Track event (single source of truth — bot/index.ts no longer writes this)
+    this.tracker?.track(EVENT_TYPES.PREMIUM_PURCHASED, user.id, { amount, transactionId });
 
     console.log(`⭐ Premium activated for user ${user.id} until ${premiumUntil.toISOString()}`);
   }

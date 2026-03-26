@@ -1,0 +1,532 @@
+# Tracking Plan: Tanish
+# Target state — what should be tracked, with what properties.
+# This is the ideal; delta.md shows how to get here from current state.
+
+meta:
+  product: "Tanish"
+  version: 1
+  created: 2026-03-26
+  updated: 2026-03-26
+  owner: "bobur"
+  implementation: custom_postgresql  # In-house Event table via Prisma ORM
+  future_destination: posthog_selfhosted  # When DAU > 5K
+  pii_policy: none  # Events reference userId (CUID) only. No PII in event properties. PII stays in User table.
+  internal_user_policy: by_flag  # isTestUser field on User model, filter in DailyMetrics cron
+  naming_convention: flat_snake_case  # No dot notation. e.g., intro_sent, not intro.sent
+  event_schema: "Event { id: cuid, userId: string, type: string, metadata: Json?, createdAt: DateTime }"
+
+# -----------------------------------------
+# Entity: User (B2C — users only, no groups)
+# -----------------------------------------
+
+entities:
+  user:
+    id_property: userId
+    id_format: "cuid (Prisma default)"
+    external_id: "telegramId (BigInt)"
+    traits:
+      # Classification
+      - name: gender
+        type: string
+        enum: [MALE, FEMALE]
+        update: on_change
+        required: true
+      - name: city
+        type: string
+        update: on_change
+        required: true
+      - name: looking_for
+        type: string[]
+        enum: [NETWORKING, FRIENDSHIP, RELATIONSHIP]
+        update: on_change
+        required: true
+      - name: preferred_language
+        type: string
+        enum: [UZBEK, RUSSIAN, ENGLISH]
+        update: on_change
+        required: true
+      # Lifecycle dates
+      - name: created_at
+        type: datetime
+        update: one_time
+        required: true
+      - name: last_active_at
+        type: datetime
+        update: on_change
+        required: true
+      - name: premium_until
+        type: datetime
+        update: on_change
+        required: false
+      # Snapshot metrics (from DailyMetrics cron or User fields)
+      - name: elo_score
+        type: number
+        update: on_change
+        required: true
+      - name: is_premium
+        type: boolean
+        update: on_change
+        required: true
+      - name: profile_complete
+        type: boolean
+        update: on_change
+        required: true
+      - name: verified
+        type: boolean
+        update: on_change
+        required: true
+      - name: is_test_user
+        type: boolean
+        update: one_time
+        required: true
+        description: "True for ADMIN_TELEGRAM_IDS. Used to exclude from DailyMetrics."
+      - name: referred_by_id
+        type: string
+        update: one_time
+        required: false
+      - name: is_ambassador
+        type: boolean
+        update: on_change
+        required: true
+
+# No group hierarchy — B2C product, user-level tracking only.
+groups: []
+
+# -----------------------------------------
+# Events (24 target events)
+# -----------------------------------------
+
+events:
+
+  # ============================================
+  # LIFECYCLE (3 events)
+  # ============================================
+
+  - name: app_open
+    category: lifecycle
+    description: "User authenticates and opens the app (Telegram initData → JWT)."
+    properties:
+      - name: is_new_user
+        type: boolean
+        required: true
+        description: "True on first auth (user was created), false on return."
+    expected_frequency: high
+    notes: "Fired on every POST /api/auth/telegram. One per session."
+
+  - name: onboarding_started
+    category: lifecycle
+    description: "User begins the onboarding flow (lands on first onboarding screen)."
+    properties: []
+    expected_frequency: low
+    notes: "NEW EVENT. Currently orphaned in DailyMetrics. Must be written when onboarding screen loads."
+
+  - name: onboarding_complete
+    category: lifecycle
+    description: "User submits onboarding data and profile is created."
+    properties:
+      - name: interest_count
+        type: integer
+        required: true
+        description: "Number of interests selected (5-8)."
+      - name: has_bio
+        type: boolean
+        required: true
+      - name: has_university
+        type: boolean
+        required: true
+      - name: has_workplace
+        type: boolean
+        required: true
+      - name: referral_code
+        type: string
+        required: false
+        description: "If user arrived via referral link."
+    expected_frequency: low
+
+  # ============================================
+  # CORE VALUE — Discovery (4 events)
+  # ============================================
+
+  - name: batch_viewed
+    category: core_value
+    description: "User opens the discovery screen and views their daily batch."
+    properties:
+      - name: batch_size
+        type: integer
+        required: true
+        description: "Number of profiles in today's batch (3 free, 8 premium)."
+      - name: is_premium
+        type: boolean
+        required: true
+    expected_frequency: medium
+    notes: "NEW EVENT. Closes the black box between app_open and intro_sent."
+
+  - name: profile_viewed
+    category: core_value
+    description: "User views a full profile card in the discovery feed (spends time on it)."
+    properties:
+      - name: viewed_user_id
+        type: string
+        required: true
+      - name: position_in_batch
+        type: integer
+        required: true
+        description: "0-indexed position of this profile in the batch."
+      - name: shared_interest_count
+        type: integer
+        required: true
+      - name: has_compatibility_score
+        type: boolean
+        required: true
+    expected_frequency: medium
+    notes: "REPLACES profile_view. Renamed for past tense consistency. Added batch position and shared interests for match quality analysis."
+
+  - name: profile_liked
+    category: core_value
+    description: "User taps 'Say hi' on a discovery card (intent to send intro)."
+    properties:
+      - name: profile_id
+        type: string
+        required: true
+      - name: position_in_batch
+        type: integer
+        required: false
+    expected_frequency: medium
+
+  - name: profile_passed
+    category: core_value
+    description: "User explicitly passes on a discovery card."
+    properties:
+      - name: profile_id
+        type: string
+        required: true
+      - name: position_in_batch
+        type: integer
+        required: false
+    expected_frequency: medium
+
+  # ============================================
+  # CORE VALUE — Intro System (5 events)
+  # ============================================
+
+  - name: intro_sent
+    category: core_value
+    description: "User sends an icebreaker intro to another user."
+    properties:
+      - name: receiver_id
+        type: string
+        required: true
+      - name: intro_id
+        type: string
+        required: true
+      - name: question_text
+        type: string
+        required: true
+        description: "The icebreaker question shown to both users. For question→match correlation analysis."
+    expected_frequency: medium
+    notes: "ADDED question_text property. Critical for icebreaker quality analysis."
+
+  - name: intro_received
+    category: core_value
+    description: "User receives an icebreaker intro from another user."
+    properties:
+      - name: sender_id
+        type: string
+        required: true
+      - name: intro_id
+        type: string
+        required: true
+    expected_frequency: medium
+
+  - name: intro_answered
+    category: core_value
+    description: "User answers an icebreaker, creating a match."
+    properties:
+      - name: intro_id
+        type: string
+        required: true
+      - name: response_time_hours
+        type: number
+        required: true
+        description: "Hours between intro_received and intro_answered."
+    expected_frequency: low
+    notes: "ADDED response_time_hours. Measures urgency and engagement."
+
+  - name: intro_declined
+    category: core_value
+    description: "User declines an icebreaker (silent — sender sees 'expired')."
+    properties:
+      - name: intro_id
+        type: string
+        required: true
+      - name: response_time_hours
+        type: number
+        required: true
+    expected_frequency: low
+
+  - name: intro_expired
+    category: core_value
+    description: "Pending intro expires after 48h with no response (cron)."
+    properties:
+      - name: intro_id
+        type: string
+        required: true
+    expected_frequency: low
+    notes: "Both sender and receiver get this event."
+
+  # ============================================
+  # CORE VALUE — Match (2 events)
+  # ============================================
+
+  - name: match_created
+    category: core_value
+    description: "Two users are matched after both answer the icebreaker."
+    properties:
+      - name: matched_user_id
+        type: string
+        required: true
+    expected_frequency: low
+    notes: "Two events per match (one per user). DailyMetrics divides by 2."
+
+  - name: chat_opened
+    category: core_value
+    description: "User taps the Telegram deep link to open chat with their match."
+    properties:
+      - name: matched_user_id
+        type: string
+        required: true
+      - name: hours_since_match
+        type: number
+        required: false
+        description: "Hours between match_created and chat_opened."
+    expected_frequency: low
+    notes: "NEW EVENT. Currently orphaned. Must be written when user taps the 't.me/username' deep link button. This is a client-side tap event — the API knows the user clicked the link but not whether Telegram actually opened."
+
+  # ============================================
+  # ENGAGEMENT (3 events)
+  # ============================================
+
+  - name: profile_edited
+    category: engagement
+    description: "User updates their own profile."
+    properties:
+      - name: fields_changed
+        type: string[]
+        required: true
+        description: "List of field names that were modified, e.g. ['bio', 'currentRole']."
+    expected_frequency: low
+    notes: "ADDED fields_changed property. Answers 'what do users edit most?'"
+
+  - name: photo_uploaded
+    category: engagement
+    description: "User uploads a photo."
+    properties:
+      - name: photo_id
+        type: string
+        required: true
+      - name: position
+        type: integer
+        required: true
+        description: "Photo position (0 = primary)."
+    expected_frequency: low
+    notes: "ADDED position property."
+
+  - name: weekly_spark
+    category: engagement
+    description: "Weekly nudge sent to matched pair to reconnect (Friday cron)."
+    properties:
+      - name: match_id
+        type: string
+        required: true
+    expected_frequency: low
+
+  # ============================================
+  # SAFETY (2 events)
+  # ============================================
+
+  - name: content_flagged
+    category: safety
+    description: "Content filter flags user-submitted text."
+    properties:
+      - name: context
+        type: string
+        enum: [profile_bio, onboarding_bio, intro_answer, intro_response]
+        required: true
+      - name: flags
+        type: string[]
+        required: true
+        description: "Array of flag strings from content filter."
+    expected_frequency: low
+    notes: "REMOVED 'original' property (contained raw user text — PII risk). Flags are sufficient."
+
+  - name: report_submitted
+    category: safety
+    description: "User reports another user."
+    properties:
+      - name: reported_id
+        type: string
+        required: true
+      - name: reason
+        type: string
+        enum: [FAKE_PROFILE, HARASSMENT, SPAM, INAPPROPRIATE_CONTENT, OTHER]
+        required: true
+    expected_frequency: low
+
+  # ============================================
+  # REVENUE (3 events)
+  # ============================================
+
+  - name: premium_viewed
+    category: revenue
+    description: "User views the premium purchase flow (invoice created)."
+    properties:
+      - name: is_promo
+        type: boolean
+        required: true
+        description: "Whether promo pricing was shown."
+    expected_frequency: low
+    notes: "ADDED is_promo property."
+
+  - name: premium_purchased
+    category: revenue
+    description: "User completes Telegram Stars payment for premium."
+    properties:
+      - name: amount
+        type: integer
+        required: true
+        description: "Amount in Telegram Stars."
+      - name: transaction_id
+        type: string
+        required: true
+    expected_frequency: low
+    notes: "MUST be written in exactly one place. Current double-write (premium.service.ts + bot/index.ts) should be consolidated to premium.service.ts only."
+
+  - name: premium_expired
+    category: revenue
+    description: "Premium subscription lapses (cron)."
+    properties:
+      - name: was_active_days
+        type: integer
+        required: false
+        description: "Days the user had premium. For retention analysis."
+    expected_frequency: low
+    notes: "ADDED was_active_days property."
+
+  # ============================================
+  # ADMIN (2 events)
+  # ============================================
+
+  - name: verification_requested
+    category: admin
+    description: "User submits a verification selfie."
+    properties: []
+    expected_frequency: low
+    notes: "NEW EVENT. Currently orphaned (queried in admin.ts but never written). Must be written in POST /api/verify/submit."
+
+  - name: verification_reviewed
+    category: admin
+    description: "Admin approves or rejects a verification."
+    properties:
+      - name: approved
+        type: boolean
+        required: true
+    expected_frequency: low
+    notes: "REPLACES verification_approved + verification_rejected. Single event with boolean property — one event instead of two."
+
+  # ============================================
+  # GROWTH (2 events)
+  # ============================================
+
+  - name: referral_credit
+    category: growth
+    description: "Referrer gets credit when their referred user completes onboarding."
+    properties:
+      - name: referred_user_id
+        type: string
+        required: true
+    expected_frequency: low
+
+  - name: referral_used
+    category: growth
+    description: "New user is linked to a referrer during onboarding."
+    properties:
+      - name: referrer_id
+        type: string
+        required: true
+    expected_frequency: low
+
+# ============================================
+# REMOVED from current state (not in target)
+# ============================================
+
+removed_events:
+  - name: elo_adjustment
+    reason: "System/operational event, not product telemetry. ELO changes are internal scoring mechanics. The data is in the User table (eloScore field) and can be queried directly. Removing from Event table reduces ~50% of event volume (every ELO change across every user generates an event)."
+
+  - name: "notification:daily_batch"
+    reason: "Notification delivery is operational telemetry. Delivery success/failure belongs in application logs (pino), not the product analytics Event table. Same for all notification:* events."
+
+  - name: "notification:new_intro"
+    reason: "See notification:daily_batch."
+
+  - name: "notification:match"
+    reason: "See notification:daily_batch."
+
+  - name: "notification:expiry_warning"
+    reason: "See notification:daily_batch."
+
+  - name: "notification:re_engagement"
+    reason: "Dedup logic for re-engagement should move to a dedicated re_engagement_sent table or Redis key, not the Event table. The re-engagement cron currently queries Event to avoid double-sending — this couples analytics to delivery logic."
+
+  - name: weekly_spark (dedup copies)
+    reason: "The weekly_spark cron queries Event for dedup. Keep the user-facing event, but dedup should move to a separate mechanism."
+
+# ============================================
+# Snapshot Sync (via DailyMetrics cron)
+# ============================================
+
+snapshot_sync:
+  cadence: daily  # 02:00 UTC / 07:00 Tashkent (existing cron)
+  metrics:
+    - name: dau
+      source: "COUNT DISTINCT userId WHERE type = 'app_open' AND NOT isTestUser"
+    - name: new_signups
+      source: "COUNT WHERE type = 'onboarding_complete'"
+    - name: onboarding_starts
+      source: "COUNT WHERE type = 'onboarding_started'"
+    - name: onboarding_completes
+      source: "COUNT WHERE type = 'onboarding_complete'"
+    - name: batch_views
+      source: "COUNT WHERE type = 'batch_viewed'"
+      notes: "NEW metric. Measures daily cycle engagement."
+    - name: intros_sent
+      source: "COUNT WHERE type = 'intro_sent'"
+    - name: intros_answered
+      source: "COUNT WHERE type = 'intro_answered'"
+    - name: intros_declined
+      source: "COUNT WHERE type = 'intro_declined'"
+    - name: intros_expired
+      source: "COUNT WHERE type = 'intro_expired'"
+    - name: matches_created
+      source: "COUNT WHERE type = 'match_created' / 2"
+    - name: chats_opened
+      source: "COUNT WHERE type = 'chat_opened'"
+      notes: "Was always 0 (orphaned). Now tracked."
+    - name: premium_views
+      source: "COUNT WHERE type = 'premium_viewed'"
+    - name: premium_purchases
+      source: "COUNT WHERE type = 'premium_purchased'"
+
+# ============================================
+# Implementation Notes
+# ============================================
+
+implementation_notes:
+  - "All events include userId (FK to User table). No anonymous events."
+  - "metadata is Json? — properties stored as JSONB in PostgreSQL."
+  - "Internal user exclusion: add isTestUser Boolean @default(false) to User model. Set true during auth for ADMIN_TELEGRAM_IDS. Filter in DailyMetrics cron only — keep raw events for debugging."
+  - "Centralize event creation: create a trackEvent() helper in packages/api/src/services/tracking.ts that wraps prisma.event.create(). All 17 files should call this helper instead of direct Prisma calls."
+  - "The trackEvent() helper should validate event type against a known enum and warn on unknown types (prevents typos)."
+  - "premium_purchased must be written in exactly ONE place. Consolidate to premium.service.ts."
+  - "notification:* events should move to application logs (pino). Remove from Event table."
+  - "elo_adjustment events should be removed. ELO history can be reconstructed from the User.eloScore field + the existing ELO service logs."

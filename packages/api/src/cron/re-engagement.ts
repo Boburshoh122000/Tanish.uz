@@ -58,16 +58,17 @@ export async function processReEngagement(
 
     for (const user of inactiveUsers) {
       try {
-        // Check if we already sent this tier's notification
+        // TODO: Move dedup to Redis (SET re_engagement:{userId}:{tier} EX 86400*7)
+        // Currently queries Event table for notification:re_engagement — keep until Redis migration
         const alreadySent = await prisma.event.findFirst({
           where: {
             userId: user.id,
-            type: `notification:re_engagement`,
+            type: 'notification:re_engagement',
             metadata: {
               path: ['tier'],
               equals: range.key,
             },
-            createdAt: { gte: to }, // Within this window
+            createdAt: { gte: to },
           },
         });
 
@@ -90,7 +91,8 @@ export async function processReEngagement(
           webAppUrl
         );
 
-        // Log with tier so we don't double-send
+        // TODO: Replace with Redis SET for dedup once notification:* events are fully removed
+        // Keeping this write temporarily so the dedup query above still works
         await prisma.event.create({
           data: {
             userId: user.id,

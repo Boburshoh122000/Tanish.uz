@@ -1,8 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import { EVENT_TYPES } from '@tanish/shared';
 
 /**
  * Daily metrics rollup. Runs at 02:00 UTC (07:00 Tashkent).
  * Computes yesterday's metrics and stores in DailyMetrics table.
+ *
+ * Changes from previous version:
+ * - Uses EVENT_TYPES constants (no hardcoded strings)
+ * - Filters out isTestUser from all counts
+ * - Fixed orphans: onboarding_start → onboarding_started, chat_opened now live
  */
 export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
   const yesterday = new Date();
@@ -12,7 +18,6 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
   const today = new Date(yesterday);
   today.setUTCDate(today.getUTCDate() + 1);
 
-  // Check if already computed
   const existing = await prisma.dailyMetrics.findUnique({
     where: { date: yesterday },
   });
@@ -23,9 +28,22 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
 
   const dateFilter = { gte: yesterday, lt: today };
 
-  // Compute all metrics in parallel
+  // Get test user IDs to exclude
+  const testUsers = await prisma.user.findMany({
+    where: { isTestUser: true },
+    select: { id: true },
+  });
+  const testUserIds = testUsers.map((u) => u.id);
+
+  // Shared where clause for event queries
+  const eventWhere = (type: string) => ({
+    type,
+    createdAt: dateFilter,
+    ...(testUserIds.length > 0 ? { userId: { notIn: testUserIds } } : {}),
+  });
+
   const [
-    dauResult,
+    dauGroups,
     newSignups,
     onboardingStarts,
     onboardingCompletes,
@@ -39,68 +57,28 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
     premiumPurchases,
     genderCounts,
     avgEloResult,
-    revenue,
+    revenueResult,
   ] = await Promise.all([
     // DAU: unique users with app_open event
     prisma.event.groupBy({
       by: ['userId'],
-      where: { type: 'app_open', createdAt: dateFilter },
-    }).then((r) => r.length),
-
-    // New signups
-    prisma.event.count({
-      where: { type: 'onboarding_complete', createdAt: dateFilter },
+      where: eventWhere(EVENT_TYPES.APP_OPEN),
     }),
 
-    // Onboarding starts
-    prisma.event.count({
-      where: { type: 'onboarding_start', createdAt: dateFilter },
-    }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.ONBOARDING_COMPLETE) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.ONBOARDING_STARTED) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.ONBOARDING_COMPLETE) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.INTRO_SENT) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.INTRO_ANSWERED) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.INTRO_DECLINED) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.INTRO_EXPIRED) }),
 
-    // Onboarding completes
-    prisma.event.count({
-      where: { type: 'onboarding_complete', createdAt: dateFilter },
-    }),
+    // match_created fires for both users — divide by 2
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.MATCH_CREATED) }),
 
-    // Intros sent
-    prisma.event.count({
-      where: { type: 'intro_sent', createdAt: dateFilter },
-    }),
-
-    // Intros answered
-    prisma.event.count({
-      where: { type: 'intro_answered', createdAt: dateFilter },
-    }),
-
-    // Intros declined
-    prisma.event.count({
-      where: { type: 'intro_declined', createdAt: dateFilter },
-    }),
-
-    // Intros expired
-    prisma.event.count({
-      where: { type: 'intro_expired', createdAt: dateFilter },
-    }),
-
-    // Matches created (divide by 2 since both users get an event)
-    prisma.event.count({
-      where: { type: 'match_created', createdAt: dateFilter },
-    }).then((c) => Math.floor(c / 2)),
-
-    // Chats opened
-    prisma.event.count({
-      where: { type: 'chat_opened', createdAt: dateFilter },
-    }),
-
-    // Premium views
-    prisma.event.count({
-      where: { type: 'premium_viewed', createdAt: dateFilter },
-    }),
-
-    // Premium purchases
-    prisma.event.count({
-      where: { type: 'premium_purchased', createdAt: dateFilter },
-    }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.CHAT_OPENED) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.PREMIUM_VIEWED) }),
+    prisma.event.count({ where: eventWhere(EVENT_TYPES.PREMIUM_PURCHASED) }),
 
     // Active gender counts
     prisma.user.groupBy({
@@ -108,6 +86,7 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
       where: {
         status: 'ACTIVE',
         profileComplete: true,
+        isTestUser: false,
         lastActiveAt: dateFilter,
       },
       _count: true,
@@ -115,24 +94,24 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
 
     // Average ELO
     prisma.user.aggregate({
-      where: { status: 'ACTIVE', profileComplete: true },
+      where: { status: 'ACTIVE', profileComplete: true, isTestUser: false },
       _avg: { eloScore: true },
     }),
 
-    // Revenue (sum of payments in Stars)
+    // Revenue
     prisma.payment.aggregate({
       where: { createdAt: dateFilter },
       _sum: { amount: true },
     }),
   ]);
 
-  const activeMales = genderCounts.find((g) => g.gender === 'MALE')?._count || 0;
-  const activeFemales = genderCounts.find((g) => g.gender === 'FEMALE')?._count || 0;
+  const activeMales = genderCounts.find((g) => g.gender === 'MALE')?._count ?? 0;
+  const activeFemales = genderCounts.find((g) => g.gender === 'FEMALE')?._count ?? 0;
 
   await prisma.dailyMetrics.create({
     data: {
       date: yesterday,
-      dau: dauResult,
+      dau: dauGroups.length,
       newSignups,
       onboardingStarts,
       onboardingCompletes,
@@ -140,16 +119,21 @@ export async function computeDailyMetrics(prisma: PrismaClient): Promise<void> {
       introsAnswered,
       introsDeclined,
       introsExpired,
-      matchesCreated,
+      matchesCreated: Math.floor(matchesCreated / 2),
       chatsOpened,
       premiumViews,
       premiumPurchases,
       activeMales,
       activeFemales,
-      avgElo: avgEloResult._avg.eloScore || 1000,
-      revenue: revenue._sum.amount || 0,
+      avgElo: avgEloResult._avg.eloScore ?? 1000,
+      revenue: revenueResult._sum.amount ?? 0,
     },
   });
 
-  console.log(`📊 Daily metrics computed for ${yesterday.toISOString().slice(0, 10)}: DAU=${dauResult}, signups=${newSignups}, matches=${matchesCreated}`);
+  console.log(
+    `📊 Metrics for ${yesterday.toISOString().slice(0, 10)}: ` +
+      `DAU=${dauGroups.length}, signups=${newSignups}, intros=${introsSent}, ` +
+      `matches=${Math.floor(matchesCreated / 2)}, chats=${chatsOpened}, ` +
+      `M:F=${activeMales}:${activeFemales}`,
+  );
 }

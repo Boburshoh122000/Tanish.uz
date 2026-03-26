@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
+import { prisma, tracker } from '../index.js';
+import { EVENT_TYPES } from '@tanish/shared';
 
 export async function referralRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -54,7 +55,7 @@ export async function referralRoutes(app: FastifyInstance) {
     const events = await prisma.event.findMany({
       where: {
         userId,
-        type: 'referral_credit',
+        type: EVENT_TYPES.REFERRAL_CREDIT,
       },
       select: { createdAt: true },
       orderBy: { createdAt: 'desc' },
@@ -97,20 +98,10 @@ export async function creditReferral(
     });
 
     // Track events for both users
-    await prisma.event.createMany({
-      data: [
-        {
-          userId: referrer.id,
-          type: 'referral_credit',
-          metadata: { referredUserId: newUserId },
-        },
-        {
-          userId: newUserId,
-          type: 'referral_used',
-          metadata: { referrerId: referrer.id },
-        },
-      ],
-    });
+    tracker.trackMany([
+      { type: EVENT_TYPES.REFERRAL_CREDIT, userId: referrer.id, metadata: { referredUserId: newUserId } },
+      { type: EVENT_TYPES.REFERRAL_USED, userId: newUserId, metadata: { referrerId: referrer.id } },
+    ]);
 
     console.log(`🎁 Referral credited: ${referrer.id} referred ${newUserId}`);
     return true;

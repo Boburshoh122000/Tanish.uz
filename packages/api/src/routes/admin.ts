@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '../index.js';
+import { prisma, tracker } from '../index.js';
+import { EVENT_TYPES } from '@tanish/shared';
 
 const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_IDS || '')
   .split(',')
@@ -81,12 +82,12 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.user.count({ where: { status: 'ACTIVE' } }),
       prisma.event.groupBy({
         by: ['userId'],
-        where: { type: 'app_open', createdAt: { gte: today } },
+        where: { type: EVENT_TYPES.APP_OPEN, createdAt: { gte: today } },
       }).then((r) => r.length),
       prisma.user.count({ where: { createdAt: { gte: today } } }),
       prisma.report.count({ where: { status: 'PENDING' } }),
-      prisma.event.count({ where: { type: 'match_created', createdAt: { gte: today } } }),
-      prisma.event.count({ where: { type: 'intro_sent', createdAt: { gte: today } } }),
+      prisma.event.count({ where: { type: EVENT_TYPES.MATCH_CREATED, createdAt: { gte: today } } }),
+      prisma.event.count({ where: { type: EVENT_TYPES.INTRO_SENT, createdAt: { gte: today } } }),
       prisma.user.count({ where: { isPremium: true } }),
       prisma.user.groupBy({
         by: ['gender'],
@@ -216,7 +217,7 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/verifications', async (_request, reply) => {
     // For MVP: users who requested verification (verified = false, has verification event)
     const pending = await prisma.event.findMany({
-      where: { type: 'verification_requested' },
+      where: { type: EVENT_TYPES.VERIFICATION_REQUESTED },
       select: {
         userId: true,
         metadata: true,
@@ -256,12 +257,7 @@ export async function adminRoutes(app: FastifyInstance) {
       await eloService.adjustScore(userId, 'profile_verified', LIMITS.ELO_PROFILE_VERIFIED);
     }
 
-    await prisma.event.create({
-      data: {
-        userId,
-        type: approved ? 'verification_approved' : 'verification_rejected',
-      },
-    });
+    tracker.track(EVENT_TYPES.VERIFICATION_REVIEWED, userId, { approved });
 
     return reply.send({ success: true, data: { userId, approved } });
   });

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma, eloService, notificationService } from '../index.js';
-import { createIntroSchema, respondIntroSchema, LIMITS } from '@tanish/shared';
+import { prisma, eloService, notificationService, tracker } from '../index.js';
+import { createIntroSchema, respondIntroSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
 import { generateIcebreaker } from '../services/icebreaker.js';
 import { filterIntroAnswer } from '../services/content-filter.js';
 
@@ -84,12 +84,9 @@ export async function introRoutes(app: FastifyInstance) {
     const filtered = filterIntroAnswer(answer);
     if (filtered.flagged) {
       // Log flagged content for admin review but allow through
-      await prisma.event.create({
-        data: {
-          userId,
-          type: 'content_flagged',
-          metadata: { context: 'intro_answer', flags: filtered.flags, original: filtered.original },
-        },
+      tracker.track(EVENT_TYPES.CONTENT_FLAGGED, userId, {
+        context: 'intro_answer',
+        flags: filtered.flags,
       });
     }
 
@@ -108,12 +105,10 @@ export async function introRoutes(app: FastifyInstance) {
     });
 
     // Track events
-    await prisma.event.createMany({
-      data: [
-        { userId, type: 'intro_sent', metadata: { receiverId, introId: intro.id } },
-        { userId: receiverId, type: 'intro_received', metadata: { senderId: userId, introId: intro.id } },
-      ],
-    });
+    tracker.trackMany([
+      { type: EVENT_TYPES.INTRO_SENT, userId, metadata: { receiverId, introId: intro.id, questionText: question } },
+      { type: EVENT_TYPES.INTRO_RECEIVED, userId: receiverId, metadata: { senderId: userId, introId: intro.id } },
+    ]);
 
     // ELO boost for receiver (they're desirable)
     await eloService.adjustScore(receiverId, 'intro_received', LIMITS.ELO_INTRO_RECEIVED);
@@ -176,9 +171,8 @@ export async function introRoutes(app: FastifyInstance) {
         data: { status: 'EXPIRED' }, // "EXPIRED" hides that it was declined
       });
 
-      await prisma.event.create({
-        data: { userId, type: 'intro_declined', metadata: { introId: id } },
-      });
+      const declineResponseHours = (Date.now() - new Date(intro.createdAt).getTime()) / 3600000;
+      tracker.track(EVENT_TYPES.INTRO_DECLINED, userId, { introId: id, responseTimeHours: Math.round(declineResponseHours * 10) / 10 });
 
       // Slight ELO penalty for sender (their intro didn't land)
       await eloService.adjustScore(intro.senderId, 'intro_declined', LIMITS.ELO_INTRO_DECLINED);
@@ -191,13 +185,7 @@ export async function introRoutes(app: FastifyInstance) {
     const filtered = filterIntroAnswer(answerText);
 
     if (filtered.flagged) {
-      await prisma.event.create({
-        data: {
-          userId,
-          type: 'content_flagged',
-          metadata: { context: 'intro_response', flags: filtered.flags, original: filtered.original },
-        },
-      });
+      tracker.track(EVENT_TYPES.CONTENT_FLAGGED, userId, { context: 'intro_response', flags: filtered.flags });
     }
 
     const updatedIntro = await prisma.intro.update({
@@ -210,13 +198,12 @@ export async function introRoutes(app: FastifyInstance) {
     });
 
     // Track events
-    await prisma.event.createMany({
-      data: [
-        { userId, type: 'intro_answered', metadata: { introId: id } },
-        { userId: intro.senderId, type: 'match_created', metadata: { matchedUserId: userId } },
-        { userId, type: 'match_created', metadata: { matchedUserId: intro.senderId } },
-      ],
-    });
+    const answerResponseHours = (Date.now() - new Date(intro.createdAt).getTime()) / 3600000;
+    tracker.trackMany([
+      { type: EVENT_TYPES.INTRO_ANSWERED, userId, metadata: { introId: id, responseTimeHours: Math.round(answerResponseHours * 10) / 10 } },
+      { type: EVENT_TYPES.MATCH_CREATED, userId: intro.senderId, metadata: { matchedUserId: userId } },
+      { type: EVENT_TYPES.MATCH_CREATED, userId, metadata: { matchedUserId: intro.senderId } },
+    ]);
 
     // ELO boost for both
     await Promise.all([

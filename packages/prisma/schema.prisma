@@ -110,6 +110,7 @@ model User {
   status      UserStatus @default(ACTIVE)
   reportCount Int        @default(0)
   pausedAt    DateTime?
+  isTestUser  Boolean    @default(false)
 
   // Ambassador
   isAmbassador Boolean @default(false)

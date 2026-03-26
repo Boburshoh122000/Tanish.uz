@@ -241,14 +241,7 @@ export class NotificationService {
         parse_mode: 'HTML',
       });
 
-      // Log notification
-      await this.prisma.event.create({
-        data: {
-          userId: data.userId,
-          type: `notification:${data.type}`,
-          metadata: { delivered: true },
-        },
-      });
+      // Notification delivery logged via pino, not Event table (operational, not product telemetry)
 
       return true;
     } catch (err: any) {

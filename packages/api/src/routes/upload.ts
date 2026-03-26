@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
-import { LIMITS, reorderPhotosSchema } from '@tanish/shared';
+import { prisma, tracker } from '../index.js';
+import { LIMITS, EVENT_TYPES, reorderPhotosSchema } from '@tanish/shared';
 import { uploadPhoto, deletePhoto, urlToKey, isR2Configured } from '../services/r2.service.js';
 
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -38,7 +38,7 @@ export async function uploadRoutes(app: FastifyInstance) {
     const recentUploads = await prisma.event.count({
       where: {
         userId,
-        type: 'photo_uploaded',
+        type: EVENT_TYPES.PHOTO_UPLOADED,
         createdAt: { gte: oneHourAgo },
       },
     });
@@ -103,9 +103,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       });
 
       // Track event
-      await prisma.event.create({
-        data: { userId, type: 'photo_uploaded', metadata: { photoId: photo.id } },
-      });
+      tracker.track(EVENT_TYPES.PHOTO_UPLOADED, userId, { photoId: photo.id, position });
 
       return reply.send({
         success: true,

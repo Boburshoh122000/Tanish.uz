@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { LIMITS } from '@tanish/shared';
+import { LIMITS, EVENT_TYPES } from '@tanish/shared';
 import type { NotificationService } from '../services/notification.service.js';
 import type { EloService } from '../services/elo.service.js';
+import type { TrackingService } from '../services/tracking.service.js';
 
 /**
  * Process intro expirations. Runs every hour.
@@ -14,7 +15,8 @@ export async function processIntroExpiry(
   prisma: PrismaClient,
   eloService: EloService,
   notificationService: NotificationService | null,
-  webAppUrl: string
+  webAppUrl: string,
+  tracker?: TrackingService,
 ): Promise<{ expired: number; warned: number }> {
   const now = new Date();
   let expired = 0;
@@ -53,12 +55,10 @@ export async function processIntroExpiry(
         );
 
         // Track events
-        await prisma.event.createMany({
-          data: [
-            { userId: intro.senderId, type: 'intro_expired', metadata: { introId: intro.id } },
-            { userId: intro.receiverId, type: 'intro_expired', metadata: { introId: intro.id } },
-          ],
-        });
+        tracker?.trackMany([
+          { type: EVENT_TYPES.INTRO_EXPIRED, userId: intro.senderId, metadata: { introId: intro.id } },
+          { type: EVENT_TYPES.INTRO_EXPIRED, userId: intro.receiverId, metadata: { introId: intro.id } },
+        ]);
 
         expired++;
       } catch (err) {

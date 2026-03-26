@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma } from '../index.js';
-import { profileUpdateSchema } from '@tanish/shared';
+import { prisma, tracker } from '../index.js';
+import { profileUpdateSchema, EVENT_TYPES } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
 
 export async function userRoutes(app: FastifyInstance) {
@@ -50,12 +50,9 @@ export async function userRoutes(app: FastifyInstance) {
       const filtered = filterContent(updateData.bio);
       updateData.bio = filtered.text;
       if (filtered.flagged) {
-        await prisma.event.create({
-          data: {
-            userId,
-            type: 'content_flagged',
-            metadata: { context: 'profile_bio', flags: filtered.flags },
-          },
+        tracker.track(EVENT_TYPES.CONTENT_FLAGGED, userId, {
+          context: 'profile_bio',
+          flags: filtered.flags,
         });
       }
     }
@@ -88,8 +85,8 @@ export async function userRoutes(app: FastifyInstance) {
     }
 
     // Track event
-    await prisma.event.create({
-      data: { userId, type: 'profile_edited' },
+    tracker.track(EVENT_TYPES.PROFILE_EDITED, userId, {
+      fieldsChanged: Object.keys(updateData),
     });
 
     const updatedUser = await prisma.user.findUnique({
@@ -153,12 +150,9 @@ export async function userRoutes(app: FastifyInstance) {
     }));
 
     // Track profile view
-    await prisma.event.create({
-      data: {
-        userId,
-        type: 'profile_view',
-        metadata: { viewedUserId: id },
-      },
+    tracker.track(EVENT_TYPES.PROFILE_VIEWED, userId, {
+      viewedUserId: id,
+      sharedInterestCount: interests.filter((i) => i.isShared).length,
     });
 
     return reply.send({

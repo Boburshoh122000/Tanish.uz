@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { EVENT_TYPES } from '@tanish/shared';
 import type { NotificationService } from '../services/notification.service.js';
+import type { TrackingService } from '../services/tracking.service.js';
 import { weeklySparkMessage } from '../services/translate.js';
 
 /**
@@ -24,7 +26,8 @@ const SPARK_QUESTIONS = [
 export async function processWeeklySpark(
   prisma: PrismaClient,
   notificationService: NotificationService | null,
-  webAppUrl: string
+  webAppUrl: string,
+  tracker?: TrackingService,
 ): Promise<{ sent: number }> {
   if (!notificationService) return { sent: 0 };
 
@@ -71,7 +74,7 @@ export async function processWeeklySpark(
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const alreadySent = await prisma.event.findFirst({
         where: {
-          type: 'weekly_spark',
+          type: EVENT_TYPES.WEEKLY_SPARK,
           userId: match.senderId,
           metadata: {
             path: ['matchId'],
@@ -128,13 +131,11 @@ export async function processWeeklySpark(
         });
       }
 
-      // Log
-      await prisma.event.createMany({
-        data: [
-          { userId: match.senderId, type: 'weekly_spark', metadata: { matchId: match.id } },
-          { userId: match.receiverId, type: 'weekly_spark', metadata: { matchId: match.id } },
-        ],
-      });
+      // Track events
+      tracker?.trackMany([
+        { type: EVENT_TYPES.WEEKLY_SPARK, userId: match.senderId, metadata: { matchId: match.id } },
+        { type: EVENT_TYPES.WEEKLY_SPARK, userId: match.receiverId, metadata: { matchId: match.id } },
+      ]);
 
       sent++;
     } catch (err) {

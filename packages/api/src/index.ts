@@ -22,6 +22,7 @@ import { premiumRoutes } from './routes/premium.js';
 import { referralRoutes } from './routes/referrals.js';
 import { adminRoutes } from './routes/admin.js';
 import { PremiumService } from './services/premium.service.js';
+import { TrackingService } from './services/tracking.service.js';
 
 // ===== Validate required env vars =====
 const REQUIRED_ENV = ['TELEGRAM_BOT_TOKEN', 'DATABASE_URL', 'JWT_SECRET'] as const;
@@ -39,6 +40,7 @@ export const prisma = new PrismaClient();
 export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 export const eloService = new EloService(prisma);
+export const tracker = new TrackingService(prisma);
 export let notificationService: NotificationService | null = null;
 export let premiumService: PremiumService | null = null;
 
@@ -125,6 +127,7 @@ try {
 
   // Initialize premium service (needs bot, works without Redis)
   premiumService = new PremiumService(prisma, bot);
+  premiumService.setTracker(tracker);
 
   // Register cron jobs (they handle null notificationService gracefully)
   registerCronJobs({

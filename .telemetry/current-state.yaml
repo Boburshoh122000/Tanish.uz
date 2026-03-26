@@ -1,0 +1,395 @@
+# Current State: Tanish
+# Scanned: 2026-03-26
+# SDK: none (in-house PostgreSQL Event table via Prisma ORM)
+# Schema: Event { id: cuid, userId: string, type: string, metadata: Json?, createdAt: DateTime }
+
+events:
+  # === Lifecycle ===
+  - name: app_open
+    status: LIVE
+    category_inferred: lifecycle
+    locations:
+      - file: packages/api/src/routes/auth.ts
+        line: 73
+        trigger: "POST /api/auth/telegram — new user (upsert then event)"
+      - file: packages/api/src/routes/auth.ts
+        line: 102
+        trigger: "POST /api/auth/telegram — returning user"
+    properties:
+      - isNewUser  # only on new user path (boolean)
+    notes: "Two code paths: new user gets { isNewUser: true }, returning user gets no metadata"
+
+  - name: onboarding_complete
+    status: LIVE
+    category_inferred: lifecycle
+    locations:
+      - file: packages/api/src/routes/onboarding.ts
+        line: 66
+        trigger: "POST /api/onboarding/complete"
+    properties: []
+
+  - name: onboarding_start
+    status: ORPHANED
+    category_inferred: lifecycle
+    locations: []
+    queried_at:
+      - file: packages/api/src/cron/daily-metrics.ts
+        line: 57
+        context: "counted for DailyMetrics.onboardingStarts"
+    notes: "Queried in daily-metrics rollup but never written anywhere in the codebase"
+
+  # === Discovery / Matching ===
+  - name: profile_liked
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/discovery.ts
+        line: 140
+        trigger: "POST /api/discovery/action with isLike=true"
+    properties:
+      - profileId
+
+  - name: profile_passed
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/discovery.ts
+        line: 140
+        trigger: "POST /api/discovery/action with isLike=false"
+    properties:
+      - profileId
+    notes: "Same code path as profile_liked, ternary on isLike boolean"
+
+  # === Intro System ===
+  - name: intro_sent
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/intros.ts
+        line: 113
+        trigger: "POST /api/intros/create — sender event"
+    properties:
+      - receiverId
+      - introId
+
+  - name: intro_received
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/intros.ts
+        line: 114
+        trigger: "POST /api/intros/create — receiver event (createMany)"
+    properties:
+      - senderId
+      - introId
+
+  - name: intro_answered
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/intros.ts
+        line: 215
+        trigger: "POST /api/intros/:id/respond with answer (match path)"
+    properties:
+      - introId
+
+  - name: intro_declined
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/intros.ts
+        line: 179
+        trigger: "POST /api/intros/:id/respond with decline"
+    properties:
+      - introId
+
+  - name: intro_expired
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/cron/intro-expiry.ts
+        line: 56
+        trigger: "Hourly cron — pending intros past expiresAt"
+    properties:
+      - introId
+    notes: "Both sender and receiver get an event (createMany with 2 records)"
+
+  - name: match_created
+    status: LIVE
+    category_inferred: core_value
+    locations:
+      - file: packages/api/src/routes/intros.ts
+        line: 216
+        trigger: "POST /api/intros/:id/respond with answer — both users get event"
+    properties:
+      - matchedUserId
+    notes: "Two events per match (one per user). DailyMetrics divides count by 2."
+
+  - name: chat_opened
+    status: ORPHANED
+    category_inferred: core_value
+    locations: []
+    queried_at:
+      - file: packages/api/src/cron/daily-metrics.ts
+        line: 92
+        context: "counted for DailyMetrics.chatsOpened"
+      - file: packages/api/src/cron/weekly-spark.ts
+        line: 67
+        context: "filter for weekly spark eligibility"
+    notes: "Queried in daily-metrics rollup and weekly-spark cron but never written anywhere in the codebase"
+
+  # === Profile ===
+  - name: profile_edited
+    status: LIVE
+    category_inferred: engagement
+    locations:
+      - file: packages/api/src/routes/users.ts
+        line: 91
+        trigger: "PATCH /api/users/me"
+    properties: []
+
+  - name: profile_view
+    status: LIVE
+    category_inferred: engagement
+    locations:
+      - file: packages/api/src/routes/users.ts
+        line: 156
+        trigger: "GET /api/users/:id — viewing another user's profile"
+    properties:
+      - viewedUserId
+
+  - name: photo_uploaded
+    status: LIVE
+    category_inferred: engagement
+    locations:
+      - file: packages/api/src/routes/upload.ts
+        line: 106
+        trigger: "POST /api/upload/photo"
+    properties:
+      - photoId
+    notes: "Also queried at upload.ts:41 for rate limiting (count recent uploads)"
+
+  # === Safety ===
+  - name: content_flagged
+    status: LIVE
+    category_inferred: safety
+    locations:
+      - file: packages/api/src/routes/users.ts
+        line: 53
+        trigger: "PATCH /api/users/me — bio flagged by content filter"
+      - file: packages/api/src/routes/onboarding.ts
+        line: 32
+        trigger: "POST /api/onboarding/complete — bio flagged during onboarding"
+      - file: packages/api/src/routes/intros.ts
+        line: 87
+        trigger: "POST /api/intros/create — intro answer flagged"
+      - file: packages/api/src/routes/intros.ts
+        line: 194
+        trigger: "POST /api/intros/:id/respond — response answer flagged"
+    properties:
+      - context  # 'profile_bio', 'onboarding_bio', 'intro_answer', 'intro_response'
+      - flags    # array of flag strings from content filter
+      - original # original text (only on intro paths)
+    notes: "Same event name, different metadata.context values. 4 call sites."
+
+  - name: report_submitted
+    status: LIVE
+    category_inferred: safety
+    locations:
+      - file: packages/api/src/routes/reports.ts
+        line: 64
+        trigger: "POST /api/reports/create"
+    properties:
+      - reportedId
+      - reason
+
+  # === Premium / Revenue ===
+  - name: premium_viewed
+    status: LIVE
+    category_inferred: revenue
+    locations:
+      - file: packages/api/src/services/premium.service.ts
+        line: 38
+        trigger: "POST /api/premium/create-invoice — before returning invoice link"
+    properties: []
+
+  - name: premium_purchased
+    status: LIVE
+    category_inferred: revenue
+    locations:
+      - file: packages/api/src/services/premium.service.ts
+        line: 85
+        trigger: "activatePremium() in premium.service.ts"
+      - file: packages/bot/src/index.ts
+        line: 186
+        trigger: "successful_payment handler in bot"
+    properties:
+      - amount
+      - transactionId
+    notes: "Two write sites for the same event — premium.service.ts and bot/index.ts. Both trigger on payment success. Potential double-write if both code paths execute for the same payment."
+
+  - name: premium_expired
+    status: LIVE
+    category_inferred: revenue
+    locations:
+      - file: packages/api/src/cron/premium-expiry.ts
+        line: 54
+        trigger: "Daily cron — users past premiumUntil + grace period"
+    properties: []
+
+  # === Admin / Verification ===
+  - name: verification_approved
+    status: LIVE
+    category_inferred: admin
+    locations:
+      - file: packages/api/src/routes/admin.ts
+        line: 259
+        trigger: "POST /api/admin/verifications/:userId/review with approved=true"
+    properties: []
+
+  - name: verification_rejected
+    status: LIVE
+    category_inferred: admin
+    locations:
+      - file: packages/api/src/routes/admin.ts
+        line: 259
+        trigger: "POST /api/admin/verifications/:userId/review with approved=false"
+    properties: []
+    notes: "Same line, ternary on approved boolean"
+
+  - name: verification_requested
+    status: ORPHANED
+    category_inferred: admin
+    locations: []
+    queried_at:
+      - file: packages/api/src/routes/admin.ts
+        line: 219
+        context: "admin route lists pending verification requests"
+    notes: "Queried in admin verifications list but never written. Verification submission (POST /api/verify/submit) does not create this event."
+
+  # === ELO ===
+  - name: elo_adjustment
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/elo.service.ts
+        line: 60
+        trigger: "Every ELO score change (adjustScore method)"
+    properties:
+      - event      # EloEvent enum string
+      - delta      # score change (+/-)
+      - newScore   # score after adjustment
+
+  # === Referral ===
+  - name: referral_credit
+    status: LIVE
+    category_inferred: growth
+    locations:
+      - file: packages/api/src/routes/referrals.ts
+        line: 104
+        trigger: "creditReferral() — referrer gets credit"
+    properties:
+      - referredUserId
+    notes: "Also queried in /api/referrals/stats to show recent credits"
+
+  - name: referral_used
+    status: LIVE
+    category_inferred: growth
+    locations:
+      - file: packages/api/src/routes/referrals.ts
+        line: 109
+        trigger: "creditReferral() — new user marked as referred"
+    properties:
+      - referrerId
+
+  # === Notifications (dynamic type) ===
+  - name: "notification:daily_batch"
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/notification.service.ts
+        line: 245
+        trigger: "sendNotification() — after successful Telegram message delivery"
+    properties:
+      - delivered  # always true (only logged on success)
+
+  - name: "notification:new_intro"
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/notification.service.ts
+        line: 245
+    properties:
+      - delivered
+
+  - name: "notification:match"
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/notification.service.ts
+        line: 245
+    properties:
+      - delivered
+
+  - name: "notification:expiry_warning"
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/notification.service.ts
+        line: 245
+    properties:
+      - delivered
+
+  - name: "notification:re_engagement"
+    status: LIVE
+    category_inferred: system
+    locations:
+      - file: packages/api/src/services/notification.service.ts
+        line: 245
+      - file: packages/api/src/cron/re-engagement.ts
+        line: 94
+        trigger: "re-engagement cron — logs tier alongside notification"
+    properties:
+      - delivered
+      - tier  # only from re-engagement.ts path ('day_3', 'day_7', etc.)
+    notes: "Two write sites: notification.service.ts logs delivery, re-engagement.ts also logs with tier metadata for dedup"
+
+  # === Weekly Spark ===
+  - name: weekly_spark
+    status: LIVE
+    category_inferred: engagement
+    locations:
+      - file: packages/api/src/cron/weekly-spark.ts
+        line: 132
+        trigger: "Friday cron — both users in a matched pair get event"
+    properties:
+      - matchId
+    notes: "Also queried at lines 74, 97, 118 for dedup (don't re-send to same pair)"
+
+identity:
+  identify_calls: []
+  group_calls: []
+  notes: "No external analytics SDK. User identity is managed via Telegram initData HMAC-SHA256 → JWT. userId (CUID) is attached to every Event record via foreign key. No identify() or group() calls exist because there is no external analytics destination."
+
+  user_id_format: "CUID (Prisma default)"
+  external_id: "telegramId (BigInt)"
+
+patterns:
+  naming_style: "snake_case consistently across all event types. Dynamic prefix pattern for notifications: 'notification:{type}'"
+  centralized: "No centralized tracking wrapper. Each route/service/cron calls prisma.event.create() or prisma.event.createMany() directly."
+  client_vs_server: "Server-only. All events are written server-side in API routes, services, cron jobs, and bot handler. No client-side (frontend) tracking."
+  error_handling: "Events are awaited (blocking). No try/catch around event creation — a failed event write would propagate the error to the route handler's catch block."
+  deduplication: "re-engagement and weekly-spark crons query existing events before creating new ones to prevent double-sending."
+
+orphan_summary:
+  total_orphaned: 3
+  orphaned_events:
+    - name: onboarding_start
+      queried_in: daily-metrics.ts
+      never_written: true
+    - name: chat_opened
+      queried_in: daily-metrics.ts, weekly-spark.ts
+      never_written: true
+    - name: verification_requested
+      queried_in: admin.ts
+      never_written: true
