@@ -16,9 +16,13 @@
           "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-          "@tanish/shared": "workspace:*"
+          "@prisma/client": "^6.3.0",
+          "@tanish/shared": "workspace:*",
+          "ioredis": "^5.4.0",
+          "node-cron": "^3.0.3"
     },
     "devDependencies": {
+          "@types/node-cron": "^3.0.11",
           "typescript": "^5.5.0"
     }
 }
