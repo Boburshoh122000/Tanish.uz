@@ -68,7 +68,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       for await (const chunk of file.file) {
         chunks.push(chunk);
       }
-      let buffer: Buffer<ArrayBufferLike> = Buffer.concat(chunks) as Buffer<ArrayBufferLike>;
+      let buffer = Buffer.concat(chunks);
 
       // Check raw size (5MB limit enforced by multipart plugin, but double check)
       if (buffer.length > 5 * 1024 * 1024) {

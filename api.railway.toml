@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tanish/prisma build && pnpm --filter @tanish/shared build && pnpm --filter @tanish/api build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tanish/prisma generate && pnpm --filter @tanish/shared build && pnpm --filter @tanish/api build"
 
 [deploy]
 startCommand = "pnpm --filter @tanish/prisma exec prisma migrate deploy && pnpm --filter @tanish/api start"
