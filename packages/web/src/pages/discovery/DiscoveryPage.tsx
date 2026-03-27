@@ -21,9 +21,9 @@ function SkeletonCard() {
                                   <div className="h-6 bg-tg-secondary-bg rounded-full w-16" />
                                   <div className="h-6 bg-tg-secondary-bg rounded-full w-20" />
                                   <div className="h-6 bg-tg-secondary-bg rounded-full w-14" />
-                        </div>div>
-                </div>div>
-          </div>div>
+                        </div>
+                </div>
+          </div>
         );
 }
 
@@ -112,7 +112,7 @@ export default function DiscoveryPage() {
                           <SkeletonCard />
                           <SkeletonCard />
                           <SkeletonCard />
-                  </div>div>
+                  </div>
                 );
     }
   
@@ -122,35 +122,35 @@ export default function DiscoveryPage() {
                   <div className="flex flex-col items-center justify-center min-h-screen pb-20 px-6 text-center">
                     {noCandidates ? (
                               <>
-                                          <span className="text-6xl mb-4">🔍</span>span>
-                                          <h2 className="text-xl font-bold text-tg-text mb-2">{t('discovery.noMatches.title')}</h2>h2>
-                                          <p className="text-tg-hint mb-6">{t('discovery.noMatches.subtitle')}</p>p>
+                                          <span className="text-6xl mb-4">🔍</span>
+                                          <h2 className="text-xl font-bold text-tg-text mb-2">{t('discovery.noMatches.title')}</h2>
+                                          <p className="text-tg-hint mb-6">{t('discovery.noMatches.subtitle')}</p>
                                           <button
                                                           onClick={() => navigate('/profile/edit')}
                                                           className="btn-primary text-sm py-2.5 px-6"
                                                         >
                                             {t('profile.edit')}
-                                          </button>button>
-                              </>>
+                                          </button>
+                              </>
                             ) : (
                               <>
-                                          <span className="text-6xl mb-4">🌙</span>span>
-                                          <h2 className="text-xl font-bold text-tg-text mb-2">{t('discovery.empty.title')}</h2>h2>
-                                          <p className="text-tg-hint mb-6">{t('discovery.empty.subtitle')}</p>p>
+                                          <span className="text-6xl mb-4">🌙</span>
+                                          <h2 className="text-xl font-bold text-tg-text mb-2">{t('discovery.empty.title')}</h2>
+                                          <p className="text-tg-hint mb-6">{t('discovery.empty.subtitle')}</p>
                                 {!user?.isPremium && (
                                               <div className="card p-4 w-full">
-                                                              <p className="text-sm text-tg-text mb-3">{t('discovery.empty.premiumCta')}</p>p>
+                                                              <p className="text-sm text-tg-text mb-3">{t('discovery.empty.premiumCta')}</p>
                                                               <button
                                                                                   onClick={() => navigate('/premium')}
                                                                                   className="btn-primary text-sm py-2.5"
                                                                                 >
                                                                 {t('common.premium')}
-                                                              </button>button>
-                                              </div>div>
+                                                              </button>
+                                              </div>
                                           )}
-                              </>>
+                              </>
                             )}
-                  </div>div>
+                  </div>
                 );
     }
   
@@ -177,21 +177,21 @@ export default function DiscoveryPage() {
                                                         }`}
                                                       />
                               {pullDistance >= PULL_THRESHOLD && (
-                                                        <span className="ml-2 text-xs text-tg-hint">{t('discovery.pullToRefresh')}</span>span>
+                                                        <span className="ml-2 text-xs text-tg-hint">{t('discovery.pullToRefresh')}</span>
                                         )}
-                            </motion.div>motion.div>
+                            </motion.div>
                           )}
-                </AnimatePresence>AnimatePresence>
+                </AnimatePresence>
           
             {/* Header */}
                 <div className="sticky top-0 bg-tg-bg/95 backdrop-blur-sm z-10 px-5 py-3 flex items-center justify-between">
                         <div>
-                                  <h1 className="text-lg font-bold text-tg-text">{t('discovery.title')}</h1>h1>
+                                  <h1 className="text-lg font-bold text-tg-text">{t('discovery.title')}</h1>
                                   <p className="text-xs text-tg-hint">
                                     {t('discovery.remaining', { count: dailyBatch.length, total: batchTotal })}
-                                  </p>p>
-                        </div>div>
-                </div>div>
+                                  </p>
+                        </div>
+                </div>
           
             {/* Profile cards */}
                 <div className="px-4 space-y-4">
@@ -216,19 +216,19 @@ export default function DiscoveryPage() {
                                                                                                     className="btn-secondary flex-1 py-2.5 text-sm"
                                                                                                   >
                                                                                 {t('discovery.pass')}
-                                                                              </button>button>
+                                                                              </button>
                                                                               <button
                                                                                                     onClick={() => handleSayHi(profile)}
                                                                                                     className="btn-primary flex-1 py-2.5 text-sm"
                                                                                                   >
                                                                                                   👋 {t('discovery.sayHi')}
-                                                                              </button>button>
-                                                            </div>div>
-                                            </ProfileCard>ProfileCard>
-                              </motion.div>motion.div>
+                                                                              </button>
+                                                            </div>
+                                            </ProfileCard>
+                              </motion.div>
                             ))}
-                        </AnimatePresence>AnimatePresence>
-                </div>div>
+                        </AnimatePresence>
+                </div>
           
             {/* Intro bottom sheet */}
             {introTarget && (
@@ -242,6 +242,6 @@ export default function DiscoveryPage() {
                                       onSuccess={() => handleIntroSuccess(introTarget.id)}
                                     />
                         )}
-          </div>div>
+          </div>
         );
-}</></></div>
+}
