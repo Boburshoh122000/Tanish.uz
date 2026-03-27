@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { EVENT_TYPES, queueWeeklySpark } from '@tanish/shared';
+import { EVENT_TYPES } from '@tanish/shared';
+import { queueWeeklySpark } from '@tanish/shared/queue';
 import type { TrackingService } from '../services/tracking.service.js';
 import { weeklySparkMessage } from '../services/translate.js';
 

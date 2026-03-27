@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
 import { prisma, eloService, tracker } from '../index.js';
-import { createIntroSchema, respondIntroSchema, LIMITS, EVENT_TYPES, queueIntroNotification, queueMatchNotification } from '@tanish/shared';
+import { createIntroSchema, respondIntroSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
+import { queueIntroNotification, queueMatchNotification } from '@tanish/shared/queue';
 import { generateQuestion } from '../services/icebreaker.service.js';
 import { filterIntroAnswer } from '../services/content-filter.js';
 import { getRedis } from '../services/redis.js';
@@ -38,6 +39,7 @@ export async function introRoutes(app: FastifyInstance) {
         id: true,
         telegramId: true,
         firstName: true,
+        preferredLanguage: true,
         interests: {
           select: { interestId: true, interest: { select: { category: true } } },
         },
@@ -199,14 +201,14 @@ export async function introRoutes(app: FastifyInstance) {
         sender: {
           select: {
             id: true, username: true, firstName: true, lastName: true,
-            telegramId: true, currentRole: true, verified: true,
+            telegramId: true, currentRole: true, verified: true, preferredLanguage: true,
             photos: { take: 1, orderBy: { position: 'asc' } },
           },
         },
         receiver: {
           select: {
             id: true, username: true, firstName: true, lastName: true,
-            telegramId: true, currentRole: true, verified: true,
+            telegramId: true, currentRole: true, verified: true, preferredLanguage: true,
             photos: { take: 1, orderBy: { position: 'asc' } },
           },
         },

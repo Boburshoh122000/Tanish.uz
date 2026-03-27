@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { queueReEngagement } from '@tanish/shared';
+import { queueReEngagement } from '@tanish/shared/queue';
 import { getRedis } from '../services/redis.js';
 
 const RE_ENGAGEMENT_MESSAGES = {

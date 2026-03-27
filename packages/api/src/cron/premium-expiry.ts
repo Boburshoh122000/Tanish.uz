@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { EVENT_TYPES, queuePremiumExpired } from '@tanish/shared';
+import { EVENT_TYPES } from '@tanish/shared';
+import { queuePremiumExpired } from '@tanish/shared/queue';
 import type { TrackingService } from '../services/tracking.service.js';
 
 /**

@@ -10,6 +10,11 @@
                                     "types": "./src/index.ts",
                                     "import": "./dist/index.js",
                                     "default": "./dist/index.js"
+                      },
+                      "./queue": {
+                                    "types": "./src/queue/enqueue.ts",
+                                    "import": "./dist/queue/enqueue.js",
+                                    "default": "./dist/queue/enqueue.js"
                       }
           },
           "scripts": {

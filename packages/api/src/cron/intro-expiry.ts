@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { LIMITS, EVENT_TYPES, queueExpiryWarning } from '@tanish/shared';
+import { LIMITS, EVENT_TYPES } from '@tanish/shared';
+import { queueExpiryWarning } from '@tanish/shared/queue';
 import type { EloService } from '../services/elo.service.js';
 import type { TrackingService } from '../services/tracking.service.js';
 

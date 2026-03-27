@@ -7,7 +7,7 @@ import { PrismaClient } from '@prisma/client';
 import { Bot } from 'grammy';
 import { connectRedis, disconnectRedis, getRedis } from './services/redis.js';
 import { EloService } from './services/elo.service.js';
-import { getNotificationQueue } from '@tanish/shared';
+import { getNotificationQueue } from '@tanish/shared/queue';
 import { registerCronJobs, stopCronJobs } from './cron/index.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';

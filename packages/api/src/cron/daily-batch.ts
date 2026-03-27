@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { LIMITS, queueDailyBatchNotification } from '@tanish/shared';
+import { LIMITS } from '@tanish/shared';
+import { queueDailyBatchNotification } from '@tanish/shared/queue';
 import { rankCandidates } from '@tanish/matching';
 
 interface BatchStats {
@@ -54,6 +55,7 @@ export async function generateDailyBatches(
         verified: true,
         telegramId: true,
         notifyDailyBatch: true,
+        preferredLanguage: true,
         interests: { select: { interestId: true } },
         photos: { select: { id: true } },
       },
