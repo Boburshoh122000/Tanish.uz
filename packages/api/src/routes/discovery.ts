@@ -3,8 +3,6 @@ import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
 import { LIMITS, EVENT_TYPES, discoveryActionSchema } from '@tanish/shared';
 import { rankCandidates } from '@tanish/matching';
-import { generateQuestion } from '../services/icebreaker.service.js';
-
 export async function discoveryRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
 
@@ -183,66 +181,6 @@ export async function discoveryRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: { remaining } });
   });
 
-  // ─── GET /api/intros/question ───────────────────────────────────
-  // Preview icebreaker question for a candidate — does NOT create an intro
-  app.get('/intros/question', async (request, reply) => {
-    const userId = request.userId;
-    const { receiverId } = request.query as { receiverId?: string };
-
-    if (!receiverId) {
-      return reply.status(400).send({
-        success: false,
-        error: { code: 'VALIDATION_ERROR', message: 'receiverId query param is required' },
-      });
-    }
-
-    // Fetch both users' interests (with category for question selection)
-    const [sender, receiver] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          interests: {
-            select: { interestId: true, interest: { select: { category: true } } },
-          },
-        },
-      }),
-      prisma.user.findUnique({
-        where: { id: receiverId, status: 'ACTIVE' },
-        select: {
-          interests: {
-            select: { interestId: true, interest: { select: { category: true } } },
-          },
-        },
-      }),
-    ]);
-
-    if (!sender) {
-      return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Sender not found' } });
-    }
-    if (!receiver) {
-      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Receiver not found' } });
-    }
-
-    const senderInterests = sender.interests.map((ui) => ({
-      interestId: ui.interestId,
-      category: ui.interest.category,
-    }));
-    const receiverInterests = receiver.interests.map((ui) => ({
-      interestId: ui.interestId,
-      category: ui.interest.category,
-    }));
-
-    const { question, category } = await generateQuestion(
-      senderInterests,
-      receiverInterests,
-      userId,
-    );
-
-    return reply.send({
-      success: true,
-      data: { question, category },
-    });
-  });
 }
 
 // ───── Internal: on-the-fly batch generation ──────────────────────

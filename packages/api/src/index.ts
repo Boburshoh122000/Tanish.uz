@@ -21,6 +21,7 @@ import { photoRoutes } from './routes/photos.js';
 import { premiumRoutes } from './routes/premium.js';
 import { referralRoutes } from './routes/referrals.js';
 import { adminRoutes } from './routes/admin.js';
+import { verificationRoutes } from './routes/verification.js';
 import { PremiumService } from './services/premium.service.js';
 import { TrackingService } from './services/tracking.service.js';
 
@@ -91,6 +92,7 @@ await app.register(photoRoutes, { prefix: '/api' });
 await app.register(premiumRoutes, { prefix: '/api/premium' });
 await app.register(referralRoutes, { prefix: '/api/referrals' });
 await app.register(adminRoutes, { prefix: '/api/admin' });
+await app.register(verificationRoutes, { prefix: '/api/verify' });
 
 // ===== Graceful shutdown =====
 const shutdown = async (signal: string) => {

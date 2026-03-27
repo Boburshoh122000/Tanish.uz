@@ -16,6 +16,7 @@ import PremiumPage from './pages/premium/PremiumPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import VerificationQueue from './pages/admin/VerificationQueue';
 import ReportQueue from './pages/admin/ReportQueue';
+import VerificationPage from './pages/verification/VerificationPage';
 import BottomNav from './components/BottomNav';
 
 const ADMIN_IDS = ((import.meta.env.VITE_ADMIN_IDS as string) || '').split(',').filter(Boolean);
@@ -117,6 +118,7 @@ export default function App() {
           <Route path="/profile/:id" element={<ProfileViewPage />} />
           <Route path="/referrals" element={<ReferralsPage />} />
           <Route path="/premium" element={<PremiumPage />} />
+          <Route path="/verify" element={<VerificationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/blocked" element={<BlockedUsersPage />} />
           <Route element={<AdminGuard />}>

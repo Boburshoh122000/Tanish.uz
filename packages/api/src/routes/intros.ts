@@ -166,6 +166,8 @@ export async function introRoutes(app: FastifyInstance) {
     await eloService.adjustScore(receiverId, 'intro_received', LIMITS.ELO_INTRO_RECEIVED);
 
     // 12. Notify receiver
+    // TODO: Replace with queueIntroNotification() from @tanish/bot once notification
+    // queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
     if (notificationService) {
       await notificationService.notifyNewIntro(
         receiverId,
@@ -281,6 +283,8 @@ export async function introRoutes(app: FastifyInstance) {
     ]);
 
     // Notify both users
+    // TODO: Replace with queueMatchNotification() from @tanish/bot once notification
+    // queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
     if (notificationService) {
       await notificationService.notifyMatch(
         intro.senderId,
@@ -428,6 +432,58 @@ export async function introRoutes(app: FastifyInstance) {
     });
 
     return reply.send({ success: true, data: mapped });
+  });
+
+  // GET /api/intros/question — preview icebreaker question for a candidate
+  app.get('/question', async (request, reply) => {
+    const userId = request.userId as string;
+    const { receiverId } = request.query as { receiverId?: string };
+
+    if (!receiverId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'receiverId query param is required',
+      });
+    }
+
+    const [sender, receiver] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          interests: {
+            select: { interestId: true, interest: { select: { category: true } } },
+          },
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: receiverId, status: 'ACTIVE' },
+        select: {
+          interests: {
+            select: { interestId: true, interest: { select: { category: true } } },
+          },
+        },
+      }),
+    ]);
+
+    if (!sender) {
+      return reply.status(401).send({ success: false, error: 'Sender not found' });
+    }
+    if (!receiver) {
+      return reply.status(404).send({ success: false, error: 'Receiver not found' });
+    }
+
+    const senderInterests = sender.interests.map((ui) => ({
+      interestId: ui.interestId,
+      category: ui.interest.category,
+    }));
+    const receiverInterests = receiver.interests.map((ui) => ({
+      interestId: ui.interestId,
+      category: ui.interest.category,
+    }));
+
+    const { question, category } = await generateQuestion(senderInterests, receiverInterests, userId);
+
+    return reply.send({ success: true, data: { question, category } });
   });
 
   // GET /api/intros/sent — intros I sent (to see status)

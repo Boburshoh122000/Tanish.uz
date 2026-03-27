@@ -97,6 +97,8 @@ export async function generateDailyBatches(
           batchesGenerated++;
 
           // Send notification
+          // TODO: Replace with queueDailyBatchNotification() from @tanish/bot once
+          // notification queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
           if (notificationService && user.notifyDailyBatch) {
             await notificationService.notifyDailyBatch(
               user.id,

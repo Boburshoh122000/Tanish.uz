@@ -63,6 +63,12 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ===== Models =====
 
 model User {
@@ -271,6 +277,21 @@ model DailyMetrics {
   avgElo               Float
   revenue              Int      // in Telegram Stars
   createdAt            DateTime @default(now())
+}
+
+model Verification {
+  id              String             @id @default(cuid())
+  userId          String
+  selfieUrl       String
+  profilePhotoUrl String
+  status          VerificationStatus @default(PENDING)
+  reviewedBy      String?
+  rejectionReason String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status])
+  @@index([userId])
 }
 
 model Payment {

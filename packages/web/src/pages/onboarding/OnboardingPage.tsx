@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { useAppStore } from '@/store';
@@ -13,8 +13,12 @@ const steps = [StepWho, StepWhat, StepInterests, StepFinal];
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { onboardingStep, setOnboardingStep, onboardingData, setUser } = useAppStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Capture referral code from ?ref= query param (set by bot deep link)
+  const refCode = useRef(searchParams.get('ref') ?? WebApp.initDataUnsafe?.start_param?.replace('ref_', '') ?? null);
 
   useEffect(() => {
     // Track onboarding start
@@ -45,7 +49,8 @@ export default function OnboardingPage() {
       // Submit onboarding
       setIsSubmitting(true);
       try {
-        const res = await api.onboarding.complete(onboardingData) as any;
+        const ref = refCode.current;
+        const res = await api.onboarding.complete(onboardingData, ref) as any;
         if (res.success) {
           setUser(res.data);
           WebApp.HapticFeedback.impactOccurred('medium');
