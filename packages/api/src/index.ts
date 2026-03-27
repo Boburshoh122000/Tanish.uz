@@ -42,7 +42,6 @@ export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 export const eloService = new EloService(prisma);
 export const tracker = new TrackingService(prisma);
-export let notificationService: unknown = null; // Legacy — notifications go through shared queue now
 export let premiumService: PremiumService | null = null;
 
 const app = Fastify({

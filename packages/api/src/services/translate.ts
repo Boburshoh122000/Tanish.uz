@@ -1,6 +1,6 @@
 /**
  * Trilingual translation helper for bot notifications.
- * Used by NotificationService and bot commands.
+ * Used by notification queue workers and bot commands.
  *
  * Language is determined by user.preferredLanguage from the database.
  */
