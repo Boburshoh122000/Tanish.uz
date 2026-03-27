@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
-import { prisma, eloService, notificationService, tracker } from '../index.js';
-import { createIntroSchema, respondIntroSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
+import { prisma, eloService, tracker } from '../index.js';
+import { createIntroSchema, respondIntroSchema, LIMITS, EVENT_TYPES, queueIntroNotification, queueMatchNotification } from '@tanish/shared';
 import { generateQuestion } from '../services/icebreaker.service.js';
 import { filterIntroAnswer } from '../services/content-filter.js';
 import { getRedis } from '../services/redis.js';
@@ -165,18 +165,13 @@ export async function introRoutes(app: FastifyInstance) {
     // 11. ELO boost for receiver
     await eloService.adjustScore(receiverId, 'intro_received', LIMITS.ELO_INTRO_RECEIVED);
 
-    // 12. Notify receiver
-    // TODO: Replace with queueIntroNotification() from @tanish/bot once notification
-    // queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
-    if (notificationService) {
-      await notificationService.notifyNewIntro(
-        receiverId,
-        Number(receiver.telegramId),
-        sender.firstName,
-        filtered.text,
-        WEBAPP_URL,
-      );
-    }
+    // 12. Notify receiver via consolidated queue
+    await queueIntroNotification({
+      receiverTelegramId: receiver.telegramId,
+      senderName: sender.firstName,
+      introPreview: filtered.text,
+      language: receiver.preferredLanguage || 'RUSSIAN',
+    });
 
     return reply.send({
       success: true,
@@ -282,25 +277,21 @@ export async function introRoutes(app: FastifyInstance) {
       eloService.adjustScore(intro.senderId, 'match_created', LIMITS.ELO_MATCH_CREATED),
     ]);
 
-    // Notify both users
-    // TODO: Replace with queueMatchNotification() from @tanish/bot once notification
-    // queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
-    if (notificationService) {
-      await notificationService.notifyMatch(
-        intro.senderId,
-        Number(intro.sender.telegramId),
-        intro.receiver.firstName,
-        intro.receiver.username,
-        WEBAPP_URL,
-      );
-      await notificationService.notifyMatch(
-        userId,
-        Number(intro.receiver.telegramId),
-        intro.sender.firstName,
-        intro.sender.username,
-        WEBAPP_URL,
-      );
-    }
+    // Notify both users via consolidated queue
+    await queueMatchNotification({
+      telegramId: intro.sender.telegramId,
+      matchName: intro.receiver.firstName,
+      matchUsername: intro.receiver.username,
+      matchProfileId: intro.receiver.id,
+      language: intro.sender.preferredLanguage || 'RUSSIAN',
+    });
+    await queueMatchNotification({
+      telegramId: intro.receiver.telegramId,
+      matchName: intro.sender.firstName,
+      matchUsername: intro.sender.username,
+      matchProfileId: intro.sender.id,
+      language: intro.receiver.preferredLanguage || 'RUSSIAN',
+    });
 
     return reply.send({
       success: true,

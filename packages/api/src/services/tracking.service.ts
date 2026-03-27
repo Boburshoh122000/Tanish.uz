@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
 import {
   type EventType,
   type EventMetadataMap,
@@ -76,7 +76,7 @@ export class TrackingService {
         data: {
           userId,
           type,
-          metadata: (metadata as Record<string, unknown>) ?? undefined,
+          metadata: metadata as unknown as Prisma.InputJsonValue ?? undefined,
         },
       })
       .catch((err) => {
@@ -103,7 +103,7 @@ export class TrackingService {
         data: {
           userId,
           type,
-          metadata: (metadata as Record<string, unknown>) ?? undefined,
+          metadata: metadata as unknown as Prisma.InputJsonValue ?? undefined,
         },
       });
     } catch (err) {
@@ -116,7 +116,7 @@ export class TrackingService {
    * Non-blocking.
    */
   trackMany(
-    events: Array<{ type: EventType; userId: string; metadata?: Record<string, unknown> }>,
+    events: Array<{ type: EventType; userId: string; metadata?: Prisma.InputJsonValue }>,
   ): void {
     this.prisma.event
       .createMany({

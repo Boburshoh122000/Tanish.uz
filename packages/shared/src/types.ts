@@ -207,6 +207,7 @@ export interface OnboardingData {
   interestIds: string[];
   bio?: string;
   languages: Language[];
+  preferredLanguage?: string;
 }
 
 // ===== Matching =====

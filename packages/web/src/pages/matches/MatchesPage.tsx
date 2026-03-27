@@ -70,7 +70,7 @@ export default function MatchesPage() {
                   💬 {t('matches.openChat')}
                 </a>
               ) : (
-                <span className="text-xs text-tg-hint">No username</span>
+                <span className="text-xs text-tg-hint">{t('matches.noUsername')}</span>
               )}
             </div>
           </motion.div>

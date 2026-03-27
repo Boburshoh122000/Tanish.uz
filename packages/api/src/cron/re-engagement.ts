@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import type { NotificationService } from '../services/notification.service.js';
+import { queueReEngagement } from '@tanish/shared';
+import { getRedis } from '../services/redis.js';
 
 const RE_ENGAGEMENT_MESSAGES = {
   day3: 'Your matches are waiting! See who\'s interested in you 🔍',
@@ -8,18 +9,20 @@ const RE_ENGAGEMENT_MESSAGES = {
   day30: 'It\'s been a while! Your profile will be hidden from discovery soon. Tap to stay active.',
 } as const;
 
+const DEDUP_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
 /**
  * Re-engagement cron. Runs daily at 06:00 UTC (11:00 Tashkent).
- * 
+ *
  * - Day 3: "Your matches are waiting"
  * - Day 7: "You have N unread intros"
  * - Day 14: "Your profile is getting less visible"
  * - Day 30: Last message, then stop
+ *
+ * Dedup via Redis SET with 7-day TTL (no Event table queries).
  */
 export async function processReEngagement(
   prisma: PrismaClient,
-  notificationService: NotificationService,
-  webAppUrl: string
 ): Promise<{ notified: number }> {
   const now = new Date();
   let notified = 0;
@@ -30,6 +33,14 @@ export async function processReEngagement(
     { minDays: 14, maxDays: 15, key: 'day14' as const },
     { minDays: 30, maxDays: 31, key: 'day30' as const },
   ];
+
+  let redis: ReturnType<typeof getRedis> | null = null;
+  try {
+    redis = getRedis();
+  } catch {
+    console.warn('[re-engagement] Redis unavailable, skipping');
+    return { notified: 0 };
+  }
 
   for (const range of ranges) {
     const from = new Date(now.getTime() - range.maxDays * 24 * 60 * 60 * 1000);
@@ -53,25 +64,14 @@ export async function processReEngagement(
           },
         },
       },
-      take: 200, // Cap per batch to avoid overwhelming the queue
+      take: 200,
     });
 
     for (const user of inactiveUsers) {
       try {
-        // TODO: Move dedup to Redis (SET re_engagement:{userId}:{tier} EX 86400*7)
-        // Currently queries Event table for notification:re_engagement — keep until Redis migration
-        const alreadySent = await prisma.event.findFirst({
-          where: {
-            userId: user.id,
-            type: 'notification:re_engagement',
-            metadata: {
-              path: ['tier'],
-              equals: range.key,
-            },
-            createdAt: { gte: to },
-          },
-        });
-
+        // Dedup via Redis SET with 7-day TTL
+        const dedupKey = `re_engagement:${user.id}:${range.key}`;
+        const alreadySent = await redis.get(dedupKey);
         if (alreadySent) continue;
 
         let message: string;
@@ -79,27 +79,18 @@ export async function processReEngagement(
           const pendingCount = user._count.receivedIntros;
           message = pendingCount > 0
             ? RE_ENGAGEMENT_MESSAGES.day7(pendingCount)
-            : RE_ENGAGEMENT_MESSAGES.day3; // Fallback
+            : RE_ENGAGEMENT_MESSAGES.day3;
         } else {
           message = RE_ENGAGEMENT_MESSAGES[range.key];
         }
 
-        await notificationService.notifyReEngagement(
-          user.id,
-          Number(user.telegramId),
-          message,
-          webAppUrl
-        );
-
-        // TODO: Replace with Redis SET for dedup once notification:* events are fully removed
-        // Keeping this write temporarily so the dedup query above still works
-        await prisma.event.create({
-          data: {
-            userId: user.id,
-            type: 'notification:re_engagement',
-            metadata: { tier: range.key },
-          },
+        await queueReEngagement({
+          telegramId: user.telegramId,
+          text: message,
         });
+
+        // Set dedup key with 7-day TTL
+        await redis.set(dedupKey, '1', 'EX', DEDUP_TTL_SECONDS);
 
         notified++;
       } catch (err) {

@@ -1,6 +1,5 @@
 import cron from 'node-cron';
 import type { PrismaClient } from '@prisma/client';
-import type { NotificationService } from '../services/notification.service.js';
 import type { EloService } from '../services/elo.service.js';
 import { generateDailyBatches } from './daily-batch.js';
 import { processIntroExpiry } from './intro-expiry.js';
@@ -13,7 +12,6 @@ import { processWeeklySpark } from './weekly-spark.js';
 interface CronDeps {
   prisma: PrismaClient;
   eloService: EloService;
-  notificationService: NotificationService;
   webAppUrl: string;
 }
 
@@ -21,7 +19,7 @@ const tasks: cron.ScheduledTask[] = [];
 
 /**
  * Register all cron jobs. Call once on server start.
- * 
+ *
  * Schedule (all times UTC → Tashkent = UTC+5):
  *   02:00 UTC (07:00 Tashkent) — Daily metrics rollup (yesterday)
  *   22:00 UTC (03:00 Tashkent) — ELO decay + Redis rebuild
@@ -33,7 +31,7 @@ const tasks: cron.ScheduledTask[] = [];
  *   13:00 UTC Fridays (18:00 Tashkent) — Weekly spark
  */
 export function registerCronJobs(deps: CronDeps): void {
-  const { prisma, eloService, notificationService, webAppUrl } = deps;
+  const { prisma, eloService, webAppUrl } = deps;
 
   // Daily metrics rollup — 02:00 UTC daily
   tasks.push(
@@ -64,7 +62,7 @@ export function registerCronJobs(deps: CronDeps): void {
     cron.schedule('0 4 * * *', async () => {
       console.log('⏰ [CRON] Daily batch generation starting...');
       try {
-        await generateDailyBatches(prisma, notificationService, webAppUrl);
+        await generateDailyBatches(prisma);
       } catch (err) {
         console.error('[CRON] Daily batch generation failed:', err);
       }
@@ -75,7 +73,7 @@ export function registerCronJobs(deps: CronDeps): void {
   tasks.push(
     cron.schedule('0 * * * *', async () => {
       try {
-        await processIntroExpiry(prisma, eloService, notificationService, webAppUrl);
+        await processIntroExpiry(prisma, eloService, webAppUrl);
       } catch (err) {
         console.error('[CRON] Intro expiry failed:', err);
       }
@@ -87,7 +85,7 @@ export function registerCronJobs(deps: CronDeps): void {
     cron.schedule('0 5 * * *', async () => {
       console.log('⏰ [CRON] Premium expiry check...');
       try {
-        await processPremiumExpiry(prisma, notificationService, webAppUrl);
+        await processPremiumExpiry(prisma, webAppUrl);
       } catch (err) {
         console.error('[CRON] Premium expiry failed:', err);
       }
@@ -99,7 +97,7 @@ export function registerCronJobs(deps: CronDeps): void {
     cron.schedule('0 6 * * *', async () => {
       console.log('⏰ [CRON] Re-engagement starting...');
       try {
-        await processReEngagement(prisma, notificationService, webAppUrl);
+        await processReEngagement(prisma);
       } catch (err) {
         console.error('[CRON] Re-engagement failed:', err);
       }
@@ -121,7 +119,7 @@ export function registerCronJobs(deps: CronDeps): void {
     cron.schedule('0 13 * * 5', async () => {
       console.log('⏰ [CRON] Weekly spark starting...');
       try {
-        await processWeeklySpark(prisma, notificationService, webAppUrl);
+        await processWeeklySpark(prisma);
       } catch (err) {
         console.error('[CRON] Weekly spark failed:', err);
       }

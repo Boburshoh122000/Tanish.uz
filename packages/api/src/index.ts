@@ -7,7 +7,7 @@ import { PrismaClient } from '@prisma/client';
 import { Bot } from 'grammy';
 import { connectRedis, disconnectRedis, getRedis } from './services/redis.js';
 import { EloService } from './services/elo.service.js';
-import { NotificationService } from './services/notification.service.js';
+import { getNotificationQueue } from '@tanish/shared';
 import { registerCronJobs, stopCronJobs } from './cron/index.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
@@ -42,7 +42,7 @@ export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 export const eloService = new EloService(prisma);
 export const tracker = new TrackingService(prisma);
-export let notificationService: NotificationService | null = null;
+export let notificationService: unknown = null; // Legacy — notifications go through shared queue now
 export let premiumService: PremiumService | null = null;
 
 const app = Fastify({
@@ -141,7 +141,7 @@ const shutdown = async (signal: string) => {
 
   try {
     stopCronJobs();
-    if (notificationService) await notificationService.shutdown();
+    // Notification queue cleanup handled by shared module
     await app.close();
     await disconnectRedis();
     await prisma.$disconnect();
@@ -168,9 +168,8 @@ try {
     app.log.info('✅ Redis connected');
 
     // Start notification service (requires Redis for BullMQ)
-    notificationService = new NotificationService(bot, prisma);
-    notificationService.startWorker();
-    app.decorate('notificationService', notificationService);
+    // Initialize shared notification queue (worker runs in bot process)
+    getNotificationQueue();
   } catch (err) {
     app.log.warn('⚠️ Redis unavailable — running without notifications queue and ELO cache');
   }

@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { EVENT_TYPES } from '@tanish/shared';
-import type { NotificationService } from '../services/notification.service.js';
+import { EVENT_TYPES, queuePremiumExpired } from '@tanish/shared';
 import type { TrackingService } from '../services/tracking.service.js';
 
 /**
@@ -9,7 +8,6 @@ import type { TrackingService } from '../services/tracking.service.js';
  */
 export async function processPremiumExpiry(
   prisma: PrismaClient,
-  notificationService: NotificationService | null,
   webAppUrl: string,
   tracker?: TrackingService,
 ): Promise<{ expired: number }> {
@@ -23,6 +21,7 @@ export async function processPremiumExpiry(
     select: {
       id: true,
       telegramId: true,
+      preferredLanguage: true,
     },
   });
 
@@ -36,20 +35,15 @@ export async function processPremiumExpiry(
     data: { isPremium: false },
   });
 
-  // Notify each user
-  if (notificationService) {
-    for (const user of expiredUsers) {
-      try {
-        await notificationService.send({
-          type: 'premium_expired',
-          telegramId: Number(user.telegramId),
-          userId: user.id,
-          text: '⭐ Your Tanish Premium has expired.\n\nYou\'re back to 3 daily matches. Upgrade again to keep the benefits!',
-          buttons: [{ text: '⭐ Renew Premium', webApp: `${webAppUrl}?page=premium` }],
-        });
-      } catch (err) {
-        console.error(`Premium expiry notification failed for ${user.id}:`, err);
-      }
+  // Notify each user via consolidated queue
+  for (const user of expiredUsers) {
+    try {
+      await queuePremiumExpired({
+        telegramId: user.telegramId,
+        language: user.preferredLanguage || 'RUSSIAN',
+      });
+    } catch (err) {
+      console.error(`Premium expiry notification failed for ${user.id}:`, err);
     }
   }
 

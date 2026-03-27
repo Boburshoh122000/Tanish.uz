@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { LIMITS } from '@tanish/shared';
+import { LIMITS, queueDailyBatchNotification } from '@tanish/shared';
 import { rankCandidates } from '@tanish/matching';
-import type { NotificationService } from '../services/notification.service.js';
 
 interface BatchStats {
   totalUsers: number;
@@ -17,8 +16,6 @@ interface BatchStats {
  */
 export async function generateDailyBatches(
   prisma: PrismaClient,
-  notificationService: NotificationService | null,
-  webAppUrl: string
 ): Promise<BatchStats> {
   const startTime = Date.now();
   const today = new Date();
@@ -96,15 +93,13 @@ export async function generateDailyBatches(
           });
           batchesGenerated++;
 
-          // Send notification
-          // TODO: Replace with queueDailyBatchNotification() from @tanish/bot once
-          // notification queues are consolidated (bot uses 'tanish:notifications', api uses 'notifications').
-          if (notificationService && user.notifyDailyBatch) {
-            await notificationService.notifyDailyBatch(
-              user.id,
-              Number(user.telegramId),
-              webAppUrl
-            );
+          // Send notification via consolidated queue
+          if (user.notifyDailyBatch) {
+            await queueDailyBatchNotification({
+              telegramId: user.telegramId,
+              matchCount: profileIds.length,
+              language: user.preferredLanguage || 'RUSSIAN',
+            });
           }
         }
       } catch (err) {

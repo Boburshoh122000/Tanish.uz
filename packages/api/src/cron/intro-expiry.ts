@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { LIMITS, EVENT_TYPES } from '@tanish/shared';
-import type { NotificationService } from '../services/notification.service.js';
+import { LIMITS, EVENT_TYPES, queueExpiryWarning } from '@tanish/shared';
 import type { EloService } from '../services/elo.service.js';
 import type { TrackingService } from '../services/tracking.service.js';
 
@@ -14,7 +13,6 @@ import type { TrackingService } from '../services/tracking.service.js';
 export async function processIntroExpiry(
   prisma: PrismaClient,
   eloService: EloService,
-  notificationService: NotificationService | null,
   webAppUrl: string,
   tracker?: TrackingService,
 ): Promise<{ expired: number; warned: number }> {
@@ -96,19 +94,16 @@ export async function processIntroExpiry(
     },
   });
 
-  if (notificationService) {
-    for (const intro of expiringIntros) {
-      try {
-        await notificationService.notifyExpiryWarning(
-          intro.receiver.id,
-          Number(intro.receiver.telegramId),
-          intro.sender.firstName,
-          webAppUrl
-        );
-        warned++;
-      } catch (err) {
-        console.error(`Failed to send expiry warning for intro ${intro.id}:`, err);
-      }
+  for (const intro of expiringIntros) {
+    try {
+      await queueExpiryWarning({
+        telegramId: intro.receiver.telegramId,
+        senderName: intro.sender.firstName,
+        language: 'RUSSIAN',
+      });
+      warned++;
+    } catch (err) {
+      console.error(`Failed to queue expiry warning for intro ${intro.id}:`, err);
     }
   }
 

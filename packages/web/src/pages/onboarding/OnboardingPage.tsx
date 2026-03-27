@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { useAppStore } from '@/store';
@@ -12,6 +13,7 @@ import StepFinal from '@/components/onboarding/StepFinal';
 const steps = [StepWho, StepWhat, StepInterests, StepFinal];
 
 export default function OnboardingPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { onboardingStep, setOnboardingStep, onboardingData, setUser } = useAppStore();
@@ -57,15 +59,15 @@ export default function OnboardingPage() {
           navigate('/');
         } else {
           WebApp.showPopup({
-            title: 'Error',
-            message: res.error || 'Something went wrong. Please try again.',
+            title: t('common.error'),
+            message: res.error || t('common.error'),
             buttons: [{ type: 'ok' }],
           });
         }
       } catch {
         WebApp.showPopup({
-          title: 'Error',
-          message: 'Connection failed. Please try again.',
+          title: t('common.error'),
+          message: t('common.retry'),
           buttons: [{ type: 'ok' }],
         });
       } finally {
@@ -116,9 +118,9 @@ export default function OnboardingPage() {
           {isSubmitting ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : onboardingStep === steps.length - 1 ? (
-            '🚀 Get Started'
+            `🚀 ${t('onboarding.step4.getStarted')}`
           ) : (
-            'Continue →'
+            `${t('common.continue')} →`
           )}
         </button>
       </div>
