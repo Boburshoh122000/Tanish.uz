@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma, tracker } from '../index.js';
-import { EVENT_TYPES } from '@tanish/shared';
+import { EVENT_TYPES, LIMITS } from '@tanish/shared';
 
 const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_IDS || '')
   .split(',')
@@ -77,6 +77,7 @@ export async function adminRoutes(app: FastifyInstance) {
       matchesToday,
       introsSentToday,
       premiumUsers,
+      activeNow,
       genderCounts,
     ] = await Promise.all([
       prisma.user.count({ where: { status: 'ACTIVE' } }),
@@ -89,6 +90,7 @@ export async function adminRoutes(app: FastifyInstance) {
       prisma.event.count({ where: { type: EVENT_TYPES.MATCH_CREATED, createdAt: { gte: today } } }),
       prisma.event.count({ where: { type: EVENT_TYPES.INTRO_SENT, createdAt: { gte: today } } }),
       prisma.user.count({ where: { isPremium: true } }),
+      prisma.user.count({ where: { lastActiveAt: { gte: new Date(Date.now() - 15 * 60 * 1000) } } }),
       prisma.user.groupBy({
         by: ['gender'],
         where: { status: 'ACTIVE', profileComplete: true },
@@ -109,6 +111,7 @@ export async function adminRoutes(app: FastifyInstance) {
         matchesToday,
         introsSentToday,
         premiumUsers,
+        activeNow,
         genderRatio: females > 0 ? Math.round((males / females) * 100) / 100 : null,
         activeMales: males,
         activeFemales: females,
@@ -213,52 +216,147 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: { banned: true } });
   });
 
-  // GET /api/admin/verifications — pending photo verifications
-  app.get('/verifications', async (_request, reply) => {
-    // For MVP: users who requested verification (verified = false, has verification event)
-    const pending = await prisma.event.findMany({
-      where: { type: EVENT_TYPES.VERIFICATION_REQUESTED },
+  // GET /api/admin/verifications/pending — paginated pending verifications
+  app.get('/verifications/pending', async (request, reply) => {
+    const { page = '1', limit = '20' } = request.query as { page?: string; limit?: string };
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+
+    const [verifications, total] = await Promise.all([
+      prisma.verification.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'asc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.verification.count({ where: { status: 'PENDING' } }),
+    ]);
+
+    const userIds = verifications.map((v) => v.userId);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
       select: {
-        userId: true,
-        metadata: true,
-        createdAt: true,
-        user: {
-          select: {
-            id: true, firstName: true, username: true,
-            verified: true,
-            photos: { orderBy: { position: 'asc' } },
-          },
-        },
+        id: true, firstName: true, lastName: true, username: true,
+        currentRole: true, verified: true, createdAt: true,
+        photos: { orderBy: { position: 'asc' }, select: { url: true, position: true } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
     });
 
-    // Filter to only unverified users
-    const filtered = pending.filter((p) => !p.user.verified);
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
-    return reply.send({ success: true, data: filtered });
+    const enriched = verifications.map((v) => ({
+      id: v.id,
+      userId: v.userId,
+      selfieUrl: v.selfieUrl,
+      profilePhotoUrl: v.profilePhotoUrl,
+      status: v.status,
+      createdAt: v.createdAt,
+      user: userMap.get(v.userId) ?? null,
+    }));
+
+    return reply.send({
+      success: true,
+      data: {
+        items: enriched,
+        total,
+        page: pageNum,
+        pageSize: limitNum,
+        hasMore: pageNum * limitNum < total,
+      },
+    });
   });
 
-  // PATCH /api/admin/verifications/:userId — approve/reject verification
-  app.patch('/verifications/:userId', async (request, reply) => {
-    const { userId } = request.params as { userId: string };
-    const { approved } = request.body as { approved: boolean };
+  // PATCH /api/admin/verifications/:id — approve or reject
+  app.patch('/verifications/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { approved, rejectionReason } = request.body as {
+      approved: boolean;
+      rejectionReason?: string;
+    };
 
-    if (approved) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { verified: true },
-      });
+    const verification = await prisma.verification.findUnique({
+      where: { id },
+      select: { id: true, userId: true, status: true },
+    });
 
-      // ELO boost
-      const { eloService } = await import('../index.js');
-      const { LIMITS } = await import('@tanish/shared');
-      await eloService.adjustScore(userId, 'profile_verified', LIMITS.ELO_PROFILE_VERIFIED);
+    if (!verification) {
+      return reply.status(404).send({ success: false, error: 'Verification not found' });
     }
 
-    tracker.track(EVENT_TYPES.VERIFICATION_REVIEWED, userId, { approved });
+    if (verification.status !== 'PENDING') {
+      return reply.status(400).send({ success: false, error: 'Verification already reviewed' });
+    }
 
-    return reply.send({ success: true, data: { userId, approved } });
+    const adminUserId = request.userId;
+
+    if (approved) {
+      await prisma.$transaction([
+        prisma.verification.update({
+          where: { id },
+          data: { status: 'APPROVED', reviewedBy: adminUserId },
+        }),
+        prisma.user.update({
+          where: { id: verification.userId },
+          data: { verified: true },
+        }),
+      ]);
+
+      const { eloService } = await import('../index.js');
+      await eloService.adjustScore(
+        verification.userId,
+        'profile_verified',
+        LIMITS.ELO_PROFILE_VERIFIED,
+      );
+
+      // Notify user
+      const user = await prisma.user.findUnique({
+        where: { id: verification.userId },
+        select: { telegramId: true },
+      });
+      if (user) {
+        const { bot } = await import('../index.js');
+        try {
+          await bot.api.sendMessage(
+            Number(user.telegramId),
+            '✅ Your profile has been verified! You now have a verified badge.',
+          );
+        } catch {
+          // Notification failure is non-critical
+        }
+      }
+    } else {
+      await prisma.verification.update({
+        where: { id },
+        data: {
+          status: 'REJECTED',
+          reviewedBy: adminUserId,
+          rejectionReason: rejectionReason || 'Photo did not match profile',
+        },
+      });
+
+      const user = await prisma.user.findUnique({
+        where: { id: verification.userId },
+        select: { telegramId: true },
+      });
+      if (user) {
+        const { bot } = await import('../index.js');
+        const reason = rejectionReason || 'Photo did not match profile';
+        try {
+          await bot.api.sendMessage(
+            Number(user.telegramId),
+            `❌ Verification not approved: ${reason}\n\nYou can try again with a clearer selfie.`,
+          );
+        } catch {
+          // Notification failure is non-critical
+        }
+      }
+    }
+
+    tracker.track(EVENT_TYPES.VERIFICATION_REVIEWED, verification.userId, { approved });
+
+    return reply.send({
+      success: true,
+      data: { id, userId: verification.userId, approved },
+    });
   });
 }

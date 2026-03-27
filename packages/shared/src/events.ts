@@ -39,7 +39,7 @@ export const EVENT_TYPES = {
   REPORT_SUBMITTED: 'report_submitted',
 
   // Revenue (3)
-  PREMIUM_VIEWED: 'premium_viewed',
+  PREMIUM_VIEWED: 'premium_viewed', // tracked client-side when premium page mounts
   PREMIUM_PURCHASED: 'premium_purchased',
   PREMIUM_EXPIRED: 'premium_expired',
 
