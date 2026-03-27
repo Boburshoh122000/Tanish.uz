@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma, tracker } from '../index.js';
-import { EVENT_TYPES, LIMITS } from '@tanish/shared';
+import { prisma, bot, tracker } from '../index.js';
+import { EVENT_TYPES, LIMITS, PREMIUM_DURATION_DAYS } from '@tanish/shared';
 
 const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_IDS || '')
   .split(',')
@@ -395,5 +395,293 @@ export async function adminRoutes(app: FastifyInstance) {
       success: true,
       data: { id, userId: verification.userId, approved },
     });
+  });
+
+  // ═══════════ User Management ═══════════
+
+  // GET /api/admin/users — paginated, searchable user list
+  app.get('/users', async (request, reply) => {
+    const { page = '1', limit = '20', search, status, isPremium } =
+      request.query as { page?: string; limit?: string; search?: string; status?: string; isPremium?: string };
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (isPremium === 'true') where.isPremium = true;
+    if (isPremium === 'false') where.isPremium = false;
+
+    if (search) {
+      const isNumeric = /^\d+$/.test(search);
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } },
+        ...(isNumeric ? [{ telegramId: BigInt(search) }] : []),
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true, telegramId: true, firstName: true, lastName: true, username: true,
+          gender: true, status: true, isPremium: true, premiumUntil: true,
+          verified: true, profileComplete: true, reportCount: true,
+          createdAt: true, lastActiveAt: true,
+          _count: { select: { photos: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    const items = users.map((u) => ({
+      ...u,
+      telegramId: u.telegramId.toString(),
+      photoCount: u._count.photos,
+      _count: undefined,
+    }));
+
+    return reply.send({
+      success: true,
+      data: { items, total, page: pageNum, pageSize: limitNum, hasMore: pageNum * limitNum < total },
+    });
+  });
+
+  // GET /api/admin/users/detail/:userId — full user for investigation
+  app.get('/users/detail/:userId', async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        photos: { orderBy: { position: 'asc' } },
+        interests: { include: { interest: true } },
+      },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    const [reportCount, paymentCount, verifications] = await Promise.all([
+      prisma.report.count({ where: { reportedId: userId } }),
+      prisma.payment.count({ where: { userId } }),
+      prisma.verification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { id: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    return reply.send({
+      success: true,
+      data: {
+        ...user,
+        telegramId: user.telegramId.toString(),
+        interests: user.interests.map((ui: { interest: unknown }) => ui.interest),
+        reportCount,
+        paymentCount,
+        verifications,
+      },
+    });
+  });
+
+  // POST /api/admin/users/:userId/grant-premium
+  app.post('/users/:userId/grant-premium', async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    const { durationDays, reason } = request.body as { durationDays: number; reason?: string };
+    const adminUserId = request.userId;
+
+    if (!durationDays || durationDays < 1 || durationDays > 365) {
+      return reply.status(400).send({ success: false, error: 'durationDays must be 1-365' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, telegramId: true, isPremium: true, premiumUntil: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    // Extend from current premiumUntil if already premium, otherwise from now
+    const baseDate = user.isPremium && user.premiumUntil && user.premiumUntil > new Date()
+      ? user.premiumUntil
+      : new Date();
+    const premiumUntil = new Date(baseDate.getTime() + durationDays * 86400000);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isPremium: true, premiumUntil },
+    });
+
+    await prisma.payment.create({
+      data: {
+        userId,
+        amount: 0,
+        transactionId: `admin_grant_${Date.now()}`,
+        plan: 'admin_grant',
+      },
+    });
+
+    await prisma.event.create({
+      data: {
+        userId,
+        type: 'premium_granted',
+        metadata: { grantedBy: adminUserId, durationDays, reason: reason || null },
+      },
+    });
+
+    try {
+      await bot.api.sendMessage(
+        Number(user.telegramId),
+        `🎁 You've been granted ${durationDays} days of Tanish Premium!`,
+      );
+    } catch { /* user may have blocked bot */ }
+
+    return reply.send({ success: true, data: { userId, premiumUntil: premiumUntil.toISOString() } });
+  });
+
+  // POST /api/admin/users/:userId/revoke-premium
+  app.post('/users/:userId/revoke-premium', async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    const { reason } = (request.body as { reason?: string }) || {};
+    const adminUserId = request.userId;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isPremium: false, premiumUntil: null },
+    });
+
+    await prisma.event.create({
+      data: {
+        userId,
+        type: 'premium_revoked',
+        metadata: { revokedBy: adminUserId, reason: reason || null },
+      },
+    });
+
+    return reply.send({ success: true });
+  });
+
+  // POST /api/admin/users/:userId/message — send Telegram message
+  app.post('/users/:userId/message', async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    const { text } = request.body as { text: string };
+    const adminUserId = request.userId;
+
+    if (!text || text.trim().length === 0) {
+      return reply.status(400).send({ success: false, error: 'Message text is required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { telegramId: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    try {
+      await bot.api.sendMessage(Number(user.telegramId), text, { parse_mode: 'HTML' });
+
+      await prisma.event.create({
+        data: {
+          userId,
+          type: 'admin_message_sent',
+          metadata: { sentBy: adminUserId },
+        },
+      });
+
+      return reply.send({ success: true, data: { delivered: true } });
+    } catch (err: any) {
+      const blocked = err?.error_code === 403;
+      return reply.send({
+        success: true,
+        data: { delivered: false, reason: blocked ? 'blocked' : 'send_failed' },
+      });
+    }
+  });
+
+  // PATCH /api/admin/users/:userId/status — change user status
+  app.patch('/users/:userId/status', async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    const { status } = request.body as { status: 'ACTIVE' | 'SUSPENDED' | 'BANNED' };
+
+    if (!['ACTIVE', 'SUSPENDED', 'BANNED'].includes(status)) {
+      return reply.status(400).send({ success: false, error: 'Invalid status' });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        status,
+        ...(status === 'ACTIVE' ? { reportCount: 0 } : {}),
+      },
+    });
+
+    return reply.send({ success: true, data: { userId, status } });
+  });
+
+  // POST /api/admin/broadcast — message all active users
+  app.post('/broadcast', async (request, reply) => {
+    const { text, confirm, filter } = request.body as {
+      text: string;
+      confirm?: boolean;
+      filter?: { isPremium?: boolean; gender?: string };
+    };
+    const adminUserId = request.userId;
+
+    if (!text || text.trim().length === 0) {
+      return reply.status(400).send({ success: false, error: 'Message text is required' });
+    }
+
+    const where: any = { status: 'ACTIVE', profileComplete: true };
+    if (filter?.isPremium !== undefined) where.isPremium = filter.isPremium;
+    if (filter?.gender) where.gender = filter.gender;
+
+    const recipients = await prisma.user.findMany({
+      where,
+      select: { id: true, telegramId: true },
+    });
+
+    if (!confirm) {
+      return reply.send({
+        success: false,
+        error: `This will be sent to ${recipients.length} users. Set confirm: true to send.`,
+        data: { recipientCount: recipients.length },
+      });
+    }
+
+    let delivered = 0;
+    let failed = 0;
+
+    for (const user of recipients) {
+      try {
+        await bot.api.sendMessage(Number(user.telegramId), text, { parse_mode: 'HTML' });
+        delivered++;
+      } catch {
+        failed++;
+      }
+      // 50ms delay to stay under Telegram's 30 msg/s rate limit
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    await prisma.event.create({
+      data: {
+        userId: adminUserId,
+        type: 'admin_broadcast',
+        metadata: { totalRecipients: recipients.length, delivered, failed, filter: filter || null },
+      },
+    });
+
+    return reply.send({ success: true, data: { total: recipients.length, delivered, failed } });
   });
 }

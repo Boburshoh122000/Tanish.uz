@@ -21,6 +21,8 @@ const VerificationPage = lazy(() => import('./pages/verification/VerificationPag
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const VerificationQueue = lazy(() => import('./pages/admin/VerificationQueue'));
 const ReportQueue = lazy(() => import('./pages/admin/ReportQueue'));
+const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+const BroadcastPage = lazy(() => import('./pages/admin/BroadcastPage'));
 
 const ADMIN_IDS = ((import.meta.env.VITE_ADMIN_IDS as string) || '').split(',').filter(Boolean);
 
@@ -155,8 +157,10 @@ export default function App() {
           <Route path="/settings/blocked" element={<BlockedUsersPage />} />
           <Route element={<AdminGuard />}>
             <Route path="/admin" element={<Suspense fallback={<LoadingScreen />}><AdminDashboard /></Suspense>} />
+            <Route path="/admin/users-list" element={<Suspense fallback={<LoadingScreen />}><UserManagement /></Suspense>} />
             <Route path="/admin/verifications" element={<Suspense fallback={<LoadingScreen />}><VerificationQueue /></Suspense>} />
             <Route path="/admin/reports" element={<Suspense fallback={<LoadingScreen />}><ReportQueue /></Suspense>} />
+            <Route path="/admin/broadcast" element={<Suspense fallback={<LoadingScreen />}><BroadcastPage /></Suspense>} />
           </Route>
         </Route>
         </Route>

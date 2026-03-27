@@ -212,6 +212,38 @@ export const api = {
       }),
     getUser: (telegramId: string) =>
       request(`/admin/users/${telegramId}`),
+    getUsers: (params?: { page?: number; limit?: number; search?: string; status?: string; isPremium?: string }) => {
+      const qs = new URLSearchParams(
+        Object.entries(params || {}).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])
+      ).toString();
+      return request(`/admin/users${qs ? `?${qs}` : ''}`);
+    },
+    getUserDetail: (userId: string) => request(`/admin/users/detail/${userId}`),
+    grantPremium: (userId: string, data: { durationDays: number; reason?: string }) =>
+      request(`/admin/users/${userId}/grant-premium`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    revokePremium: (userId: string, data?: { reason?: string }) =>
+      request(`/admin/users/${userId}/revoke-premium`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    sendMessage: (userId: string, text: string) =>
+      request(`/admin/users/${userId}/message`, {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      }),
+    updateUserStatus: (userId: string, status: string) =>
+      request(`/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }),
+    broadcast: (data: { text: string; confirm: boolean; filter?: { isPremium?: boolean; gender?: string } }) =>
+      request('/admin/broadcast', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   upload: {

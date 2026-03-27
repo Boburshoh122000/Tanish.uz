@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
 import { api } from '@/lib/api';
+import AdminNav from './AdminNav';
 
 // Matches the actual GET /admin/stats backend response
 interface LiveStats {
@@ -115,6 +116,8 @@ export default function AdminDashboard() {
         <h1 className="text-lg font-bold text-tg-text">{t('admin.title')}</h1>
       </div>
 
+      <AdminNav />
+
       <div className="px-4 space-y-4">
         {/* Live metrics cards */}
         {live && (
@@ -178,21 +181,19 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Queue navigation */}
-        <div className="space-y-2 pt-2">
+        {/* Quick links */}
+        <div className="grid grid-cols-2 gap-2 pt-2">
           <button
             onClick={() => navigate('/admin/verifications')}
-            className="card w-full p-4 flex justify-between items-center text-left"
+            className="card p-3 text-center"
           >
             <span className="text-sm font-medium text-tg-text">{t('admin.pendingVerifications')}</span>
-            <ChevronRight />
           </button>
           <button
             onClick={() => navigate('/admin/reports')}
-            className="card w-full p-4 flex justify-between items-center text-left"
+            className="card p-3 text-center"
           >
             <span className="text-sm font-medium text-tg-text">{t('admin.pendingReports')}</span>
-            <ChevronRight />
           </button>
         </div>
       </div>
