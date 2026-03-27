@@ -92,10 +92,7 @@ export default function ProfileViewPage() {
   }, [id, t, navigate]);
 
   // Derive shared interest IDs from the current user
-  const myInterestIds =
-    user?.interests?.map((ui: { interestId?: string; interest?: { id: string } }) =>
-      ui.interestId ?? ui.interest?.id ?? '',
-    ) ?? [];
+  const myInterestIds = user?.interests?.map((i) => i.id) ?? [];
 
   if (loading) {
     return <ProfileViewSkeleton />;

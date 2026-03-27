@@ -13,6 +13,7 @@ import {
   Gender,
   Language,
   type InterestWithCategory,
+  type UserProfile,
 } from '@tanish/shared';
 
 const LOOKING_FOR_OPTIONS: { value: LookingFor; emoji: string; key: string }[] = [
@@ -78,10 +79,7 @@ export default function ProfileEditPage() {
       })),
     );
     setSelectedInterests(
-      user.interests?.map(
-        (ui: { interestId?: string; interest?: { id: string } }) =>
-          ui.interestId ?? ui.interest?.id ?? '',
-      ) ?? [],
+      user.interests?.map((i) => i.id) ?? [],
     );
     // Preferences
     if (user.showMeGender) setShowMe(user.showMeGender);
@@ -203,7 +201,7 @@ export default function ProfileEditPage() {
       showMeGender: showMe,
       ageRangeMin: ageMin,
       ageRangeMax: ageMax,
-    })) as { success: boolean; data?: Record<string, unknown> };
+    })) as { success: boolean; data?: UserProfile };
     if (res.success && res.data) {
       setUser(res.data);
       navigate('/profile');

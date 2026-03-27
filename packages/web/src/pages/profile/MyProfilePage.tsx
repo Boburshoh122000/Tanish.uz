@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
 import { useAppStore } from '@/store';
 import ProfileCard from '@/components/ProfileCard';
-import type { PublicProfile } from '@tanish/shared';
+import type { PublicProfile, UserProfile } from '@tanish/shared';
 
 export default function MyProfilePage() {
   const { t } = useTranslation();
@@ -39,11 +39,7 @@ export default function MyProfilePage() {
     currentRole: user.currentRole ?? null,
     university: user.university ?? null,
     photos: user.photos ?? [],
-    interests:
-      user.interests?.map(
-        (ui: { interest?: Record<string, unknown>; interestId?: string }) =>
-          ui.interest ?? ui,
-      ) ?? [],
+    interests: user.interests ?? [],
     verified: user.verified ?? false,
     isPremium: user.isPremium ?? false,
   };
@@ -115,13 +111,13 @@ function TipRow({ emoji, text }: { emoji: string; text: string }) {
   );
 }
 
-function calculateCompleteness(user: Record<string, unknown>): number {
+function calculateCompleteness(user: UserProfile): number {
   let score = 0;
   if (user.firstName) score += 10;
-  if ((user.photos as unknown[])?.length > 0) score += 25;
+  if (user.photos?.length > 0) score += 25;
   if (user.bio) score += 15;
   if (user.currentRole) score += 15;
-  if ((user.interests as unknown[])?.length >= 5) score += 20;
-  if ((user.photos as unknown[])?.length >= 2) score += 15;
+  if (user.interests?.length >= 5) score += 20;
+  if (user.photos?.length >= 2) score += 15;
   return score;
 }

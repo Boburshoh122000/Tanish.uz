@@ -80,6 +80,16 @@ export interface UserProfile {
   status: UserStatus;
   lastActiveAt: string;
   createdAt: string;
+  // Preferences
+  showMeGender: Gender | null;
+  ageRangeMin: number;
+  ageRangeMax: number;
+  // Settings
+  paused: boolean;
+  notifyDailyBatch: boolean;
+  notifyIntros: boolean;
+  notifyMatches: boolean;
+  notifyReEngagement: boolean;
 }
 
 export interface PublicProfile {
