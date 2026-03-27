@@ -352,5 +352,13 @@
     "intros": "Tanishuv",
     "profile": "Profil",
     "settings": "Sozlamalar"
+  },
+
+  "badges": {
+    "founder": "Asoschisi",
+    "team": "Jamoa",
+    "ambassador": "Elchi",
+    "verified": "Tasdiqlangan",
+    "premium": "Premium"
   }
 }

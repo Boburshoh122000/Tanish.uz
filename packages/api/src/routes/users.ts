@@ -3,6 +3,7 @@ import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
 import { profileUpdateSchema, notificationPrefsSchema, EVENT_TYPES } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
+import { getUserBadges } from '../utils/badges.js';
 
 export async function userRoutes(app: FastifyInstance) {
   // All user routes require auth
@@ -30,6 +31,7 @@ export async function userRoutes(app: FastifyInstance) {
         ...user,
         telegramId: user.telegramId.toString(),
         interests: user.interests.map((ui: { interest: unknown }) => ui.interest),
+        badges: getUserBadges(user),
       },
     });
   });
@@ -107,6 +109,7 @@ export async function userRoutes(app: FastifyInstance) {
         ...updatedUser,
         telegramId: updatedUser!.telegramId.toString(),
         interests: updatedUser!.interests.map((ui: { interest: unknown }) => ui.interest),
+        badges: getUserBadges(updatedUser!),
       },
     });
   });
@@ -120,9 +123,11 @@ export async function userRoutes(app: FastifyInstance) {
       where: { id, status: 'ACTIVE' },
       select: {
         id: true,
+        telegramId: true,
         firstName: true,
         lastName: true,
         gender: true,
+        isAmbassador: true,
         lookingFor: true,
         birthDate: true,
         city: true,
@@ -170,6 +175,7 @@ export async function userRoutes(app: FastifyInstance) {
         age,
         interests,
         sharedInterests: interests.filter((i) => i.isShared),
+        badges: getUserBadges(user),
       },
     });
   });

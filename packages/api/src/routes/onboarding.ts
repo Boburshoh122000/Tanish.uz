@@ -4,6 +4,7 @@ import { prisma, eloService, tracker } from '../index.js';
 import { onboardingSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
 import { creditReferral } from './referrals.js';
+import { getUserBadges } from '../utils/badges.js';
 
 export async function onboardingRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -97,6 +98,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
         ...updatedUser,
         telegramId: updatedUser!.telegramId.toString(),
         interests: updatedUser!.interests.map((ui: { interest: unknown }) => ui.interest),
+        badges: getUserBadges(updatedUser!),
       },
     });
   });

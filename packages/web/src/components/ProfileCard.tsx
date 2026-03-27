@@ -2,6 +2,7 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import type { PublicProfile, InterestWithCategory } from '@tanish/shared';
+import { BadgeOverlay } from './BadgeRow';
 
 interface ProfileCardProps {
   profile: PublicProfile;
@@ -113,6 +114,13 @@ export default function ProfileCard({
                 }`}
               />
             ))}
+          </div>
+        )}
+
+        {/* Badge overlay — top right */}
+        {profile.badges && profile.badges.length > 0 && (
+          <div className="absolute top-3 right-3 z-20">
+            <BadgeOverlay badges={profile.badges} />
           </div>
         )}
 

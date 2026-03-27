@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
 import { useAppStore } from '@/store';
 import ProfileCard from '@/components/ProfileCard';
+import BadgeRow from '@/components/BadgeRow';
 import type { PublicProfile, UserProfile } from '@tanish/shared';
 
 export default function MyProfilePage() {
@@ -42,6 +43,7 @@ export default function MyProfilePage() {
     interests: user.interests ?? [],
     verified: user.verified ?? false,
     isPremium: user.isPremium ?? false,
+    badges: user.badges,
   };
 
   const completeness = calculateCompleteness(user);
@@ -70,6 +72,11 @@ export default function MyProfilePage() {
             ✏️ {t('profile.edit')}
           </button>
         </ProfileCard>
+
+        {/* Badges */}
+        {user.badges && user.badges.length > 0 && (
+          <BadgeRow badges={user.badges} />
+        )}
 
         {/* Stats row */}
         <div className="grid grid-cols-2 gap-3">

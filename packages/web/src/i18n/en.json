@@ -352,5 +352,13 @@
     "intros": "Intros",
     "profile": "Profile",
     "settings": "Settings"
+  },
+
+  "badges": {
+    "founder": "Founder",
+    "team": "Team",
+    "ambassador": "Ambassador",
+    "verified": "Verified",
+    "premium": "Premium"
   }
 }

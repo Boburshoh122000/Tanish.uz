@@ -352,5 +352,13 @@
     "intros": "Интро",
     "profile": "Профиль",
     "settings": "Настройки"
+  },
+
+  "badges": {
+    "founder": "Основатель",
+    "team": "Команда",
+    "ambassador": "Амбассадор",
+    "verified": "Подтверждён",
+    "premium": "Премиум"
   }
 }

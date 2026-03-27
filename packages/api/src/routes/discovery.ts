@@ -3,6 +3,8 @@ import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
 import { LIMITS, EVENT_TYPES, discoveryActionSchema } from '@tanish/shared';
 import { rankCandidates } from '@tanish/matching';
+import { getUserBadges } from '../utils/badges.js';
+
 export async function discoveryRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
 
@@ -54,10 +56,10 @@ export async function discoveryRoutes(app: FastifyInstance) {
     const profiles = await prisma.user.findMany({
       where: { id: { in: batch.profiles } },
       select: {
-        id: true, firstName: true, lastName: true, gender: true,
+        id: true, telegramId: true, firstName: true, lastName: true, gender: true,
         lookingFor: true, birthDate: true, city: true, bio: true,
         currentRole: true, university: true, verified: true, isPremium: true,
-        username: true,
+        isAmbassador: true, username: true,
         photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true, verified: true } },
         interests: { include: { interest: true } },
       },
@@ -101,6 +103,7 @@ export async function discoveryRoutes(app: FastifyInstance) {
           photos: profile.photos,
           interests,
           sharedInterests: interests.filter((i) => i.isShared),
+          badges: getUserBadges(profile),
         };
       });
 

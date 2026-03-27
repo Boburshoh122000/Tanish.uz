@@ -3,6 +3,7 @@ import { validateInitData, createToken } from '../auth/index.js';
 import { prisma, bot, tracker } from '../index.js';
 import { telegramAuthSchema, EVENT_TYPES } from '@tanish/shared';
 import { uploadPhoto, isR2Configured } from '../lib/r2.js';
+import { getUserBadges } from '../utils/badges.js';
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/telegram — authenticate via Telegram initData
@@ -106,6 +107,7 @@ export async function authRoutes(app: FastifyInstance) {
           ...user,
           telegramId: user!.telegramId.toString(),
           interests: user!.interests.map((ui: { interest: unknown }) => ui.interest),
+          badges: getUserBadges(user!),
         },
         isNewUser,
         onboardingComplete: user!.profileComplete,

@@ -54,6 +54,15 @@ export enum ReportStatus {
   DISMISSED = 'DISMISSED',
 }
 
+// ===== Badges =====
+
+export interface Badge {
+  type: 'founder' | 'team' | 'ambassador' | 'verified' | 'premium';
+  label: string;
+  icon: string;
+  priority: number;
+}
+
 // ===== User Types =====
 
 export interface UserProfile {
@@ -90,6 +99,7 @@ export interface UserProfile {
   notifyIntros: boolean;
   notifyMatches: boolean;
   notifyReEngagement: boolean;
+  badges?: Badge[];
 }
 
 export interface PublicProfile {
@@ -109,6 +119,7 @@ export interface PublicProfile {
   isPremium: boolean;
   sharedInterests?: InterestWithCategory[];
   compatibilityScore?: number;
+  badges?: Badge[];
 }
 
 export interface Photo {
