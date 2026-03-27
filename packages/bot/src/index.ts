@@ -184,7 +184,14 @@ bot.on('message:successful_payment', async (ctx) => {
       },
     });
 
-    // Event tracking moved to premium.service.ts (single source of truth)
+    // Track premium purchase event
+    await prisma.event.create({
+      data: {
+        userId: user.id,
+        type: 'premium_purchased',
+        metadata: { amount: payment.total_amount, transactionId: payment.telegram_payment_charge_id },
+      },
+    });
 
     console.log(`⭐ Premium activated: user=${user.id}, amount=${payment.total_amount} Stars`);
   } catch (err) {
@@ -212,6 +219,14 @@ bot.catch((err) => {
 let notificationWorker: Worker | null = null;
 
 async function start() {
+  // Register bot commands so users see suggestions when typing /
+  await bot.api.setMyCommands([
+    { command: 'start', description: 'Open Tanish' },
+    { command: 'profile', description: 'Edit your profile' },
+    { command: 'referral', description: 'Get your referral link' },
+    { command: 'help', description: 'How to use Tanish' },
+  ]);
+
   // Start notification worker (requires REDIS_URL)
   if (process.env.REDIS_URL) {
     notificationWorker = startNotificationWorker(bot);

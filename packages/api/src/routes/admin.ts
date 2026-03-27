@@ -203,6 +203,32 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: { action, reportId: id } });
   });
 
+  // GET /api/admin/users/:telegramId — look up user by Telegram ID
+  app.get('/users/:telegramId', async (request, reply) => {
+    const { telegramId } = request.params as { telegramId: string };
+
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+      include: {
+        photos: { orderBy: { position: 'asc' } },
+        interests: { include: { interest: true } },
+      },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    return reply.send({
+      success: true,
+      data: {
+        ...user,
+        telegramId: user.telegramId.toString(),
+        interests: user.interests.map((ui: { interest: unknown }) => ui.interest),
+      },
+    });
+  });
+
   // POST /api/admin/users/:id/unsuspend — unsuspend a user
   app.post('/users/:id/unsuspend', async (request, reply) => {
     const { id } = request.params as { id: string };
