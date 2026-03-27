@@ -90,6 +90,8 @@ export interface UserProfile {
   lastActiveAt: string;
   createdAt: string;
   premiumUntil: string | null;
+  preferredLanguage: Language;
+  isAmbassador: boolean;
   // Preferences
   genderPref: Gender | null;
   minAge: number;
@@ -106,6 +108,7 @@ export interface PublicProfile {
   id: string;
   firstName: string;
   lastName: string | null;
+  username: string | null;
   gender: Gender;
   lookingFor: LookingFor[];
   age: number;
@@ -162,7 +165,6 @@ export interface IntroData {
 // ===== Daily Batch =====
 
 export interface DailyBatchData {
-  id: string;
   profiles: PublicProfile[];
   date: string;
   remaining: number;
