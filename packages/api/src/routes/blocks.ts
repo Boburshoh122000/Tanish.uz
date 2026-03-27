@@ -7,7 +7,7 @@ export async function blockRoutes(app: FastifyInstance) {
 
   // POST /api/blocks/create
   app.post('/create', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const { blockedUserId } = request.body as { blockedUserId: string };
 
     if (!blockedUserId) {
@@ -35,7 +35,7 @@ export async function blockRoutes(app: FastifyInstance) {
 
   // GET /api/blocks — list blocked users
   app.get('/', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     const blocks = await prisma.block.findMany({
       where: { blockerId: userId },
@@ -52,7 +52,7 @@ export async function blockRoutes(app: FastifyInstance) {
 
   // DELETE /api/blocks/:id — unblock
   app.delete('/:id', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const { id } = request.params as { id: string };
 
     const block = await prisma.block.findUnique({ where: { id } });

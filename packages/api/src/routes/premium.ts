@@ -8,7 +8,7 @@ export async function premiumRoutes(app: FastifyInstance) {
 
   // GET /api/premium/status — get premium status
   app.get('/status', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     try {
       const status = await premiumService!.getStatus(userId);
@@ -20,7 +20,7 @@ export async function premiumRoutes(app: FastifyInstance) {
 
   // POST /api/premium/create-invoice — generate Telegram Stars invoice
   app.post('/create-invoice', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const { promo } = (request.body as { promo?: boolean }) || {};
 
     try {
@@ -58,7 +58,7 @@ export async function premiumRoutes(app: FastifyInstance) {
 
   // GET /api/premium/who-likes-me — see who sent intros (premium only)
   app.get('/who-likes-me', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     // Check premium status
     const status = await premiumService!.getStatus(userId);

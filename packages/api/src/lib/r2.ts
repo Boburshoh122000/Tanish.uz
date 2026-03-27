@@ -28,33 +28,25 @@ function getClient(): S3Client {
 }
 
 /**
- * Generate a unique key for a photo upload.
- * Format: photos/{userId}/{timestamp}-{random}.{ext}
- */
-function generateKey(userId: string, mimeType: string): string {
-  const ext = mimeType === 'image/png' ? 'png'
-    : mimeType === 'image/webp' ? 'webp'
-    : 'jpg';
-  const rand = crypto.randomBytes(8).toString('hex');
-  return `photos/${userId}/${Date.now()}-${rand}.${ext}`;
-}
-
-/**
  * Upload a photo buffer to R2 and return the public URL.
+ * Key format: photos/{userId}/{uuid}.webp
  */
 export async function uploadPhoto(
   userId: string,
   buffer: Buffer,
-  mimeType: string
+  contentType: string
 ): Promise<{ url: string; key: string }> {
   const s3 = getClient();
-  const key = generateKey(userId, mimeType);
+  const ext = contentType === 'image/png' ? 'png'
+    : contentType === 'image/webp' ? 'webp'
+    : 'jpg';
+  const key = `photos/${userId}/${crypto.randomUUID()}.${ext}`;
 
   await s3.send(new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
     Body: buffer,
-    ContentType: mimeType,
+    ContentType: contentType,
     CacheControl: 'public, max-age=31536000, immutable',
   }));
 
@@ -84,7 +76,6 @@ export function urlToKey(url: string): string | null {
   if (R2_PUBLIC_URL && url.startsWith(R2_PUBLIC_URL)) {
     return url.slice(R2_PUBLIC_URL.length + 1);
   }
-  // Try to extract from S3-style URL
   const match = url.match(/photos\/[^?]+/);
   return match ? match[0] : null;
 }

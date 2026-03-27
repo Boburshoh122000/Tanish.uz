@@ -8,7 +8,7 @@ export async function reportRoutes(app: FastifyInstance) {
 
   // POST /api/reports/create
   app.post('/create', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const body = createReportSchema.safeParse(request.body);
 
     if (!body.success) {

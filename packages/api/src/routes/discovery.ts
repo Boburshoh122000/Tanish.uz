@@ -9,7 +9,7 @@ export async function discoveryRoutes(app: FastifyInstance) {
 
   // GET /api/discovery/batch — get today's match batch
   app.get('/batch', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -114,7 +114,7 @@ export async function discoveryRoutes(app: FastifyInstance) {
 
   // POST /api/discovery/action — like or pass
   app.post('/action', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const { profileId, isLike } = request.body as { profileId: string; isLike: boolean };
 
     if (!profileId) {

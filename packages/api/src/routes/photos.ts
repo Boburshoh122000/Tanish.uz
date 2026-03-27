@@ -3,24 +3,25 @@ import sharp from 'sharp';
 import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
 import { LIMITS, EVENT_TYPES, reorderPhotosSchema } from '@tanish/shared';
-import { uploadPhoto, deletePhoto, urlToKey, isR2Configured } from '../services/r2.service.js';
+import { uploadPhoto, deletePhoto, urlToKey, isR2Configured } from '../lib/r2.js';
+import { getRedis } from '../services/redis.js';
 
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_DIMENSION = LIMITS.PHOTO_MAX_DIMENSION || 1200;
 const MAX_COMPRESSED_BYTES = (LIMITS.PHOTO_COMPRESSED_MAX_SIZE_MB || 1) * 1024 * 1024;
+const RATE_LIMIT_WINDOW = 3600; // 1 hour in seconds
 
-export async function uploadRoutes(app: FastifyInstance) {
+export async function photoRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
 
   // POST /api/upload/photo — upload a photo
-  app.post('/photo', async (request, reply) => {
-    const userId = (request as any).userId;
+  app.post('/upload/photo', async (request, reply) => {
+    const userId = request.userId;
 
-    // Check R2 config
     if (!isR2Configured()) {
       return reply.status(503).send({
         success: false,
-        error: 'Photo storage not configured. Contact admin.',
+        error: { code: 'STORAGE_UNAVAILABLE', message: 'Photo storage not configured.' },
       });
     }
 
@@ -29,36 +30,42 @@ export async function uploadRoutes(app: FastifyInstance) {
     if (existingCount >= LIMITS.MAX_PHOTOS) {
       return reply.status(400).send({
         success: false,
-        error: `Maximum ${LIMITS.MAX_PHOTOS} photos allowed`,
+        error: { code: 'MAX_PHOTOS', message: `Maximum ${LIMITS.MAX_PHOTOS} photos allowed` },
       });
     }
 
-    // Rate limit: max 3 uploads per hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentUploads = await prisma.event.count({
-      where: {
-        userId,
-        type: EVENT_TYPES.PHOTO_UPLOADED,
-        createdAt: { gte: oneHourAgo },
-      },
-    });
-    if (recentUploads >= LIMITS.MAX_PHOTO_UPLOADS_PER_HOUR) {
-      return reply.status(429).send({
-        success: false,
-        error: 'Too many uploads. Try again in an hour.',
-      });
+    // Rate limit: max 3 uploads per hour via Redis INCR + TTL
+    const rateLimitKey = `ratelimit:photo:${userId}`;
+    try {
+      const redis = getRedis();
+      const count = await redis.incr(rateLimitKey);
+      if (count === 1) {
+        await redis.expire(rateLimitKey, RATE_LIMIT_WINDOW);
+      }
+      if (count > LIMITS.MAX_PHOTO_UPLOADS_PER_HOUR) {
+        return reply.status(429).send({
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many uploads. Try again in an hour.' },
+        });
+      }
+    } catch {
+      // Redis unavailable — fall through without rate limiting
+      app.log.warn('Redis unavailable for photo rate limiting');
     }
 
     // Get uploaded file
     const file = await request.file();
     if (!file) {
-      return reply.status(400).send({ success: false, error: 'No file uploaded' });
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'NO_FILE', message: 'No file uploaded' },
+      });
     }
 
     if (!ALLOWED_MIMES.includes(file.mimetype)) {
       return reply.status(400).send({
         success: false,
-        error: 'Only JPEG, PNG, and WebP images are allowed',
+        error: { code: 'INVALID_TYPE', message: 'Only JPEG, PNG, and WebP images are allowed' },
       });
     }
 
@@ -68,38 +75,40 @@ export async function uploadRoutes(app: FastifyInstance) {
       for await (const chunk of file.file) {
         chunks.push(chunk);
       }
-      let buffer: Buffer<any> = Buffer.concat(chunks);
+      let buffer = Buffer.concat(chunks);
 
-      // Check raw size (5MB limit enforced by multipart plugin, but double check)
-      if (buffer.length > 5 * 1024 * 1024) {
+      // Check raw size (5MB limit enforced by multipart plugin, but double-check)
+      if (buffer.length > LIMITS.PHOTO_MAX_SIZE_MB * 1024 * 1024) {
         return reply.status(400).send({
           success: false,
-          error: 'File too large. Maximum 5MB.',
+          error: { code: 'FILE_TOO_LARGE', message: `File too large. Maximum ${LIMITS.PHOTO_MAX_SIZE_MB}MB.` },
         });
       }
 
-      // Compress with sharp: resize to max dimension, quality 80, output as JPEG
-      buffer = await sharp(buffer)
-        .resize(MAX_DIMENSION, MAX_DIMENSION, {
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
-        .jpeg({ quality: 80, progressive: true })
-        .toBuffer();
+      // Compress with sharp: resize to max dimension, output as WebP
+      buffer = Buffer.from(
+        await sharp(buffer)
+          .resize(MAX_DIMENSION, MAX_DIMENSION, {
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 80 })
+          .toBuffer()
+      );
 
-      // Verify compressed size
+      // Verify compressed size — try harder if still too big
       if (buffer.length > MAX_COMPRESSED_BYTES) {
-        // Try harder compression
-        buffer = await sharp(buffer).jpeg({ quality: 60, progressive: true }).toBuffer();
+        buffer = Buffer.from(await sharp(buffer).webp({ quality: 60 }).toBuffer());
       }
 
       // Upload to R2
-      const { url } = await uploadPhoto(userId, buffer, 'image/jpeg');
+      const { url } = await uploadPhoto(userId, buffer, 'image/webp');
 
       // Save to database
-      const position = existingCount; // Append at end
+      const position = existingCount;
       const photo = await prisma.photo.create({
         data: { userId, url, position },
+        select: { id: true, url: true, position: true },
       });
 
       // Track event
@@ -107,29 +116,28 @@ export async function uploadRoutes(app: FastifyInstance) {
 
       return reply.send({
         success: true,
-        data: {
-          id: photo.id,
-          url: photo.url,
-          position: photo.position,
-        },
+        data: { id: photo.id, url: photo.url, position: photo.position },
       });
-    } catch (err: any) {
-      app.log.error('Photo upload failed:', err);
+    } catch (err) {
+      app.log.error(err, 'Photo upload failed');
       return reply.status(500).send({
         success: false,
-        error: 'Failed to process photo. Try again.',
+        error: { code: 'UPLOAD_FAILED', message: 'Failed to process photo. Try again.' },
       });
     }
   });
 
-  // DELETE /api/upload/photo/:id — delete a photo
-  app.delete('/photo/:id', async (request, reply) => {
-    const userId = (request as any).userId;
+  // DELETE /api/photos/:id — delete own photo only
+  app.delete('/photos/:id', async (request, reply) => {
+    const userId = request.userId;
     const { id } = request.params as { id: string };
 
-    const photo = await prisma.photo.findUnique({ where: { id } });
+    const photo = await prisma.photo.findUnique({ where: { id }, select: { id: true, userId: true, url: true } });
     if (!photo || photo.userId !== userId) {
-      return reply.status(404).send({ success: false, error: 'Photo not found' });
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Photo not found' },
+      });
     }
 
     // Check minimum photos (can't delete last photo if profile is complete)
@@ -141,7 +149,7 @@ export async function uploadRoutes(app: FastifyInstance) {
     if (photoCount <= 1 && user?.profileComplete) {
       return reply.status(400).send({
         success: false,
-        error: 'Cannot delete your only photo. Upload another first.',
+        error: { code: 'MIN_PHOTOS', message: 'Cannot delete your only photo. Upload another first.' },
       });
     }
 
@@ -160,6 +168,7 @@ export async function uploadRoutes(app: FastifyInstance) {
     const remaining = await prisma.photo.findMany({
       where: { userId },
       orderBy: { position: 'asc' },
+      select: { id: true, position: true },
     });
     for (let i = 0; i < remaining.length; i++) {
       if (remaining[i]!.position !== i) {
@@ -173,15 +182,15 @@ export async function uploadRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: { deleted: true } });
   });
 
-  // PATCH /api/upload/photos/reorder — reorder photos
+  // PATCH /api/photos/reorder — reorder photos
   app.patch('/photos/reorder', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const body = reorderPhotosSchema.safeParse(request.body);
 
     if (!body.success) {
       return reply.status(400).send({
         success: false,
-        error: 'Invalid request',
+        error: { code: 'INVALID_REQUEST', message: 'Invalid request' },
         details: body.error.flatten(),
       });
     }
@@ -197,7 +206,7 @@ export async function uploadRoutes(app: FastifyInstance) {
     if (photos.length !== photoIds.length) {
       return reply.status(400).send({
         success: false,
-        error: 'Some photo IDs are invalid or not yours',
+        error: { code: 'INVALID_PHOTOS', message: 'Some photo IDs are invalid or not yours' },
       });
     }
 

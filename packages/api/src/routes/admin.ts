@@ -27,8 +27,8 @@ async function adminMiddleware(request: FastifyRequest, reply: FastifyReply): Pr
     return reply.status(403).send({ success: false, error: 'Admin access required' });
   }
 
-  (request as any).userId = payload.userId;
-  (request as any).telegramId = payload.telegramId;
+  request.userId = payload.userId;
+  request.telegramId = BigInt(payload.telegramId);
 }
 
 export async function adminRoutes(app: FastifyInstance) {

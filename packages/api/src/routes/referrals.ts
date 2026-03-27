@@ -9,7 +9,7 @@ export async function referralRoutes(app: FastifyInstance) {
 
   // GET /api/referrals/link — get or create referral link
   app.get('/link', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     let user = await prisma.user.findUnique({
       where: { id: userId },
@@ -41,7 +41,7 @@ export async function referralRoutes(app: FastifyInstance) {
 
   // GET /api/referrals/stats — referral statistics
   app.get('/stats', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     const referralCount = await prisma.user.count({
       where: { referredById: userId },

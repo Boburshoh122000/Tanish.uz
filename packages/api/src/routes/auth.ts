@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { validateInitData, createToken } from '../auth/index.js';
 import { prisma, bot, tracker } from '../index.js';
 import { telegramAuthSchema, EVENT_TYPES } from '@tanish/shared';
-import { uploadPhoto, isR2Configured } from '../services/r2.service.js';
+import { uploadPhoto, isR2Configured } from '../lib/r2.js';
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/telegram — authenticate via Telegram initData

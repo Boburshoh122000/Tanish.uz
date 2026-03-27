@@ -10,7 +10,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
 
   // POST /api/onboarding/complete — submit onboarding data
   app.post('/complete', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const body = onboardingSchema.safeParse(request.body);
 
     if (!body.success) {

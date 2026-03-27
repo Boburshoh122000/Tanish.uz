@@ -110,6 +110,6 @@ export async function authMiddleware(
     data: { lastActiveAt: new Date() },
   });
 
-  (request as any).userId = user.id;
-  (request as any).telegramId = user.telegramId;
+  request.userId = user.id;
+  request.telegramId = user.telegramId;
 }

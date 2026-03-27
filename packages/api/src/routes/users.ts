@@ -10,7 +10,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   // GET /api/users/me — get current user profile
   app.get('/me', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -32,7 +32,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   // PATCH /api/users/me — update current user profile
   app.patch('/me', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const body = profileUpdateSchema.safeParse(request.body);
 
     if (!body.success) {
@@ -106,7 +106,7 @@ export async function userRoutes(app: FastifyInstance) {
   // GET /api/users/:id — get public profile
   app.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     const user = await prisma.user.findUnique({
       where: { id, status: 'ACTIVE' },
@@ -168,7 +168,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   // POST /api/users/me/notifications — update notification preferences
   app.patch('/me/notifications', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
     const { dailyBatch, intros, matches, reEngagement } = request.body as any;
 
     await prisma.user.update({
@@ -186,7 +186,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   // DELETE /api/users/me — soft delete account
   app.delete('/me', async (request, reply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId;
 
     await prisma.user.update({
       where: { id: userId },
