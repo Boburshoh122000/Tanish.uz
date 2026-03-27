@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
+import type { Worker } from 'bullmq';
 import Fastify from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { registerWebhook } from './register-webhook.js';
 import { PREMIUM_DURATION_DAYS } from '@tanish/shared';
+import { startNotificationWorker } from './queue/notification.queue.js';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://tanish.uz';
@@ -207,7 +209,16 @@ bot.catch((err) => {
 
 // ===== Start =====
 
+let notificationWorker: Worker | null = null;
+
 async function start() {
+  // Start notification worker (requires REDIS_URL)
+  if (process.env.REDIS_URL) {
+    notificationWorker = startNotificationWorker(bot);
+  } else {
+    console.warn('⚠️ REDIS_URL not set — notification worker disabled');
+  }
+
   const webhookUrl = process.env.WEBHOOK_URL ||
     (process.env.RAILWAY_PUBLIC_DOMAIN
       ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
@@ -219,6 +230,7 @@ async function start() {
     app.get('/bot/health', async () => ({
       status: 'ok',
       bot: 'running',
+      worker: notificationWorker ? 'running' : 'disabled',
       timestamp: new Date().toISOString(),
     }));
 
@@ -235,11 +247,18 @@ async function start() {
   }
 }
 
-// Graceful shutdown
+// Graceful shutdown — close worker before bot
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
-    console.log(`Received ${signal}, shutting down bot...`);
+    console.log(`Received ${signal}, shutting down...`);
+    // 1. Stop accepting new notification jobs
+    if (notificationWorker) {
+      console.log('Closing notification worker...');
+      await notificationWorker.close();
+    }
+    // 2. Stop bot
     await bot.stop();
+    // 3. Disconnect database
     await prisma.$disconnect();
     process.exit(0);
   });

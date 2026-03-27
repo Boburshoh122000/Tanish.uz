@@ -12,7 +12,9 @@
   "dependencies": {
     "@tanish/shared": "workspace:*",
     "@prisma/client": "^6.3.0",
+    "bullmq": "^5.30.0",
     "grammy": "^1.30.0",
+    "ioredis": "^5.4.0",
     "fastify": "^5.2.0",
     "dotenv": "^16.4.0"
   },

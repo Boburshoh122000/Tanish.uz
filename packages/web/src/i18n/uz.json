@@ -87,7 +87,14 @@
     "noMatches": {
       "title": "Siz uchun odamlar qidirilmoqda",
       "subtitle": "Moslik olish uchun profilingizni to'liq to'ldiring!"
-    }
+    },
+    "pullToRefresh": "Yangilash uchun qo'yib yuboring"
+  },
+
+  "intro": {
+    "sendAnswer": "Tanishuv yuborish",
+    "answerTooShort": "Yana {{count}} ta belgi kerak",
+    "sending": "Yuborilmoqda..."
   },
 
   "intros": {
@@ -107,7 +114,14 @@
     "matchedTab": "Juftliklar",
     "matchedEmpty": "Hali juftliklar yo'q",
     "matchedEmptySubtitle": "Ikkalangiz ham savolga javob berganingizda, juftlik hosil bo'ladi!",
-    "openChat": "Chatni ochish"
+    "openChat": "Chatni ochish",
+    "expiresSoon": "Tez orada tugaydi",
+    "connectSuccess": "Bog'landingiz!",
+    "noPending": "Kutilayotgan tanishuvlar yo'q",
+    "noMatches": "Hali juftliklar yo'q",
+    "sendIntros": "Boshlash uchun kashfiyotdan birovga salom ayting!",
+    "typeAnswer": "Javobingizni yozing...",
+    "minChars": "Yana {{count}} ta belgi kerak"
   },
 
   "matches": {

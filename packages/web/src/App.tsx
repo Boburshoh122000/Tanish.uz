@@ -1,25 +1,35 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useAppStore } from './store';
 import { api, setAuthToken } from './lib/api';
-import Onboarding from './screens/Onboarding';
-import Discovery from './screens/Discovery';
-import Profile from './screens/Profile';
-import IntrosList from './screens/IntrosList';
-import Matches from './screens/Matches';
-import Settings from './screens/Settings';
+import OnboardingPage from './pages/onboarding/OnboardingPage';
+import DiscoveryPage from './pages/discovery/DiscoveryPage';
+import MyProfilePage from './pages/profile/MyProfilePage';
+import ProfileEditPage from './pages/profile/ProfileEditPage';
+import ProfileViewPage from './pages/profile/ProfileViewPage';
+import IntrosPage from './pages/intros/IntrosPage';
+import SettingsPage from './pages/settings/SettingsPage';
+import BlockedUsersPage from './pages/settings/BlockedUsersPage';
 import BottomNav from './components/BottomNav';
 
+function Layout() {
+  return (
+    <>
+      <Outlet />
+      <BottomNav />
+    </>
+  );
+}
+
 export default function App() {
-  const { user, isAuthenticated, isLoading, setUser, setAuthenticated, setLoading } = useAppStore();
+  const { isLoading, setUser, setAuthenticated, setLoading } = useAppStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     WebApp.ready();
     WebApp.expand();
     WebApp.enableClosingConfirmation();
-
     authenticate();
   }, []);
 
@@ -27,7 +37,6 @@ export default function App() {
     try {
       const initData = WebApp.initData;
       if (!initData) {
-        // Dev mode — skip auth
         if (import.meta.env.DEV) {
           setLoading(false);
           return;
@@ -69,36 +78,22 @@ export default function App() {
     );
   }
 
-  // Dev mode fallback
-  if (!isAuthenticated && import.meta.env.DEV) {
-    return (
-      <div className="min-h-screen bg-tg-bg">
-        <Routes>
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/" element={<Discovery />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/intros" element={<IntrosList />} />
-          <Route path="/matches" element={<Matches />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-        <BottomNav />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-tg-bg">
       <Routes>
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/" element={<Discovery />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/intros" element={<IntrosList />} />
-        <Route path="/matches" element={<Matches />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route element={<Layout />}>
+          <Route path="/discovery" element={<DiscoveryPage />} />
+          <Route path="/intros" element={<IntrosPage />} />
+          <Route path="/profile" element={<MyProfilePage />} />
+          {/* /profile/edit MUST come before /profile/:id — otherwise "edit" is captured as an :id param */}
+          <Route path="/profile/edit" element={<ProfileEditPage />} />
+          <Route path="/profile/:id" element={<ProfileViewPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/blocked" element={<BlockedUsersPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/discovery" replace />} />
       </Routes>
-      {user?.profileComplete && <BottomNav />}
     </div>
   );
 }

@@ -51,7 +51,7 @@ export async function generateDailyBatches(
         eloScore: true,
         isPremium: true,
         university: true,
-        workplace: true,
+        currentRole: true,
         bio: true,
         lastActiveAt: true,
         verified: true,
@@ -140,7 +140,7 @@ async function findAndScoreCandidates(
     eloScore: number;
     isPremium: boolean;
     university: string | null;
-    workplace: string | null;
+    currentRole: string | null;
     bio: string | null;
     lastActiveAt: Date;
     verified: boolean;
@@ -202,7 +202,7 @@ async function findAndScoreCandidates(
       eloScore: true,
       lastActiveAt: true,
       university: true,
-      workplace: true,
+      currentRole: true,
       bio: true,
       verified: true,
       isPremium: true,
@@ -222,7 +222,7 @@ async function findAndScoreCandidates(
     lastActiveAt: user.lastActiveAt,
     interests: user.interests.map((i) => i.interestId),
     university: user.university,
-    workplace: user.workplace,
+    currentRole: user.currentRole,
     bio: user.bio,
     photoCount: user.photos.length,
     verified: user.verified,
@@ -235,7 +235,7 @@ async function findAndScoreCandidates(
     lastActiveAt: c.lastActiveAt,
     interests: c.interests.map((i) => i.interestId),
     university: c.university,
-    workplace: c.workplace,
+    currentRole: c.currentRole,
     bio: c.bio,
     photoCount: c.photos.length,
     verified: c.verified,

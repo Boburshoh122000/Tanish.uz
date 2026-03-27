@@ -9,7 +9,7 @@ export default function BottomNav() {
   const { pendingIntros } = useAppStore();
 
   const tabs = [
-    { path: '/', i18nKey: 'nav.discover', Icon: CompassIcon, badge: 0 },
+    { path: '/discovery', i18nKey: 'nav.discover', Icon: CompassIcon, badge: 0 },
     { path: '/intros', i18nKey: 'nav.intros', Icon: ChatBubbleIcon, badge: pendingIntros.length },
     { path: '/profile', i18nKey: 'nav.profile', Icon: PersonIcon, badge: 0 },
     { path: '/settings', i18nKey: 'nav.settings', Icon: GearIcon, badge: 0 },
@@ -22,8 +22,7 @@ export default function BottomNav() {
     >
       <div className="flex justify-around items-center h-14">
         {tabs.map(({ path, i18nKey, Icon, badge }) => {
-          const isActive =
-            path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+          const isActive = location.pathname.startsWith(path);
 
           return (
             <button

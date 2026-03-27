@@ -1,3 +1,5 @@
+import type { DailyBatchData, PublicProfile } from '@tanish/shared';
+
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
@@ -93,12 +95,16 @@ export const api = {
   },
 
   discovery: {
-    getBatch: () => request('/discovery/batch'),
+    getBatch: () => request<DailyBatchData>('/discovery/batch'),
     action: (profileId: string, isLike: boolean) =>
       request('/discovery/action', {
         method: 'POST',
         body: JSON.stringify({ profileId, isLike }),
       }),
+    getQuestion: (receiverId: string) =>
+      request<{ question: string; category: string }>(
+        `/discovery/intros/question?receiverId=${encodeURIComponent(receiverId)}`
+      ),
   },
 
   intros: {
@@ -133,6 +139,16 @@ export const api = {
     list: () => request('/blocks'),
     remove: (id: string) =>
       request(`/blocks/${id}`, { method: 'DELETE' }),
+  },
+
+  photos: {
+    delete: (id: string) =>
+      request(`/photos/${id}`, { method: 'DELETE' }),
+    reorder: (photoIds: string[]) =>
+      request('/photos/reorder', {
+        method: 'PATCH',
+        body: JSON.stringify({ photoIds }),
+      }),
   },
 
   upload: {

@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
-import { useAppStore } from '../store';
-import { api } from '../lib/api';
+import { useTranslation } from 'react-i18next';
+import { useAppStore } from '@/store';
+import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 
-export default function Matches() {
+export default function MatchesPage() {
+  const { t } = useTranslation();
   const { matchedIntros, setMatchedIntros } = useAppStore();
 
   useEffect(() => {
@@ -21,8 +23,8 @@ export default function Matches() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen pb-20 px-6 text-center">
         <span className="text-5xl mb-4">💫</span>
-        <h2 className="text-xl font-bold text-tg-text mb-2">No matches yet</h2>
-        <p className="text-tg-hint">When both of you answer the icebreaker question, you'll match!</p>
+        <h2 className="text-xl font-bold text-tg-text mb-2">{t('matches.empty')}</h2>
+        <p className="text-tg-hint">{t('matches.emptySubtitle')}</p>
       </div>
     );
   }
@@ -30,7 +32,7 @@ export default function Matches() {
   return (
     <div className="pb-20">
       <div className="px-5 py-3">
-        <h1 className="text-lg font-bold text-tg-text">Matches</h1>
+        <h1 className="text-lg font-bold text-tg-text">{t('matches.title')}</h1>
         <p className="text-xs text-tg-hint">{matchedIntros.length} connections</p>
       </div>
 
@@ -65,7 +67,7 @@ export default function Matches() {
                   rel="noopener"
                   className="btn-primary !w-auto px-4 py-2 text-sm shrink-0"
                 >
-                  💬 Chat
+                  💬 {t('matches.openChat')}
                 </a>
               ) : (
                 <span className="text-xs text-tg-hint">No username</span>

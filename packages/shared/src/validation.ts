@@ -80,6 +80,15 @@ export const createBlockSchema = z.object({
   blockedUserId: z.string().min(1),
 });
 
+// ===== Discovery Action =====
+
+export const discoveryActionSchema = z.object({
+  profileId: z.string().min(1),
+  action: z.enum(['like', 'pass']),
+});
+
+export type DiscoveryActionInput = z.infer<typeof discoveryActionSchema>;
+
 // ===== Photo Reorder =====
 
 export const reorderPhotosSchema = z.object({

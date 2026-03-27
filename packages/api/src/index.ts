@@ -85,7 +85,7 @@ await app.register(onboardingRoutes, { prefix: '/api/onboarding' });
 await app.register(introRoutes, { prefix: '/api/intros' });
 await app.register(reportRoutes, { prefix: '/api/reports' });
 await app.register(blockRoutes, { prefix: '/api/blocks' });
-await app.register(discoveryRoutes, { prefix: '/api/discovery' });
+await app.register(discoveryRoutes, { prefix: '/api' });
 await app.register(interestRoutes, { prefix: '/api/interests' });
 await app.register(photoRoutes, { prefix: '/api' });
 await app.register(premiumRoutes, { prefix: '/api/premium' });

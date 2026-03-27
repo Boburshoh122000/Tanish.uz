@@ -87,7 +87,14 @@
     "noMatches": {
       "title": "Still finding people for you",
       "subtitle": "Make sure your profile is complete to get matched!"
-    }
+    },
+    "pullToRefresh": "Release to refresh"
+  },
+
+  "intro": {
+    "sendAnswer": "Send intro",
+    "answerTooShort": "{{count}} more characters needed",
+    "sending": "Sending..."
   },
 
   "intros": {
@@ -107,7 +114,14 @@
     "matchedTab": "Matched",
     "matchedEmpty": "No matches yet",
     "matchedEmptySubtitle": "When both of you answer the icebreaker, you'll match!",
-    "openChat": "Open chat"
+    "openChat": "Open chat",
+    "expiresSoon": "Expires soon",
+    "connectSuccess": "Connected!",
+    "noPending": "No pending intros",
+    "noMatches": "No matches yet",
+    "sendIntros": "Say hi to someone in discovery to get started!",
+    "typeAnswer": "Write your answer...",
+    "minChars": "{{count}} more characters needed"
   },
 
   "matches": {

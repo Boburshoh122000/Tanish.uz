@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
-import { useAppStore } from '../store';
-import { api } from '../lib/api';
-import StepWho from '../components/onboarding/StepWho';
-import StepWhat from '../components/onboarding/StepWhat';
-import StepInterests from '../components/onboarding/StepInterests';
-import StepFinal from '../components/onboarding/StepFinal';
+import { useAppStore } from '@/store';
+import { api } from '@/lib/api';
+import StepWho from '@/components/onboarding/StepWho';
+import StepWhat from '@/components/onboarding/StepWhat';
+import StepInterests from '@/components/onboarding/StepInterests';
+import StepFinal from '@/components/onboarding/StepFinal';
 
 const steps = [StepWho, StepWhat, StepInterests, StepFinal];
 
-export default function Onboarding() {
+export default function OnboardingPage() {
   const navigate = useNavigate();
   const { onboardingStep, setOnboardingStep, onboardingData, setUser } = useAppStore();
   const [isSubmitting, setIsSubmitting] = useState(false);

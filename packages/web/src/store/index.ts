@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import type { OnboardingData } from '@tanish/shared';
+import type { OnboardingData, PublicProfile, UserProfile, IntroData, InterestWithCategory } from '@tanish/shared';
 
 interface AppState {
   // Auth
-  user: any | null;
+  user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setUser: (user: any) => void;
+  setUser: (user: UserProfile) => void;
   setAuthenticated: (auth: boolean) => void;
   setLoading: (loading: boolean) => void;
 
@@ -17,21 +17,22 @@ interface AppState {
   setOnboardingStep: (step: number) => void;
 
   // Discovery
-  dailyBatch: any[];
+  dailyBatch: PublicProfile[];
   batchRemaining: number;
-  setDailyBatch: (batch: any[]) => void;
+  batchTotal: number;
+  setDailyBatch: (batch: PublicProfile[], total?: number) => void;
   removeFromBatch: (profileId: string) => void;
 
   // Intros
-  pendingIntros: any[];
-  matchedIntros: any[];
-  setPendingIntros: (intros: any[]) => void;
-  setMatchedIntros: (intros: any[]) => void;
+  pendingIntros: IntroData[];
+  matchedIntros: IntroData[];
+  setPendingIntros: (intros: IntroData[]) => void;
+  setMatchedIntros: (intros: IntroData[]) => void;
 
   // Interests (cached)
-  allInterests: any[];
-  groupedInterests: Record<string, any[]>;
-  setInterests: (interests: any[], grouped: Record<string, any[]>) => void;
+  allInterests: InterestWithCategory[];
+  groupedInterests: Record<string, InterestWithCategory[]>;
+  setInterests: (interests: InterestWithCategory[], grouped: Record<string, InterestWithCategory[]>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -55,10 +56,11 @@ export const useAppStore = create<AppState>((set) => ({
   // Discovery
   dailyBatch: [],
   batchRemaining: 0,
-  setDailyBatch: (batch) => set({ dailyBatch: batch, batchRemaining: batch.length }),
+  batchTotal: 0,
+  setDailyBatch: (batch, total) => set({ dailyBatch: batch, batchRemaining: batch.length, batchTotal: total ?? batch.length }),
   removeFromBatch: (profileId) =>
     set((state) => ({
-      dailyBatch: state.dailyBatch.filter((p: any) => p.id !== profileId),
+      dailyBatch: state.dailyBatch.filter((p) => p.id !== profileId),
       batchRemaining: state.batchRemaining - 1,
     })),
 
