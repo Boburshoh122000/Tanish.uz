@@ -103,7 +103,7 @@ export const api = {
       }),
     getQuestion: (receiverId: string) =>
       request<{ question: string; category: string }>(
-        `/discovery/intros/question?receiverId=${encodeURIComponent(receiverId)}`
+        `/intros/question?receiverId=${encodeURIComponent(receiverId)}`
       ),
   },
 
