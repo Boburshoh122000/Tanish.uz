@@ -169,7 +169,12 @@ export const api = {
         body: formData,
       });
 
-      return res.json();
+      const json = await res.json();
+      if (!res.ok) {
+        const msg = typeof json.error === 'string' ? json.error : json.error?.message || `Error ${res.status}`;
+        return { success: false, error: msg };
+      }
+      return json;
     },
     status: () =>
       request<{ status: string; rejectionReason?: string; createdAt?: string }>(
@@ -257,7 +262,12 @@ export const api = {
         body: formData,
       });
 
-      return res.json();
+      const json = await res.json();
+      if (!res.ok) {
+        const msg = typeof json.error === 'string' ? json.error : json.error?.message || `Error ${res.status}`;
+        return { success: false, error: msg };
+      }
+      return json;
     },
   },
 };
