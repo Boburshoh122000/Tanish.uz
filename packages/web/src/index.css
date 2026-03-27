@@ -68,18 +68,26 @@ html {
   }
 
   .btn-primary {
-    @apply w-full py-3.5 rounded-xl font-semibold text-base
-           bg-tg-button text-tg-button-text
+    @apply w-full py-3.5 rounded-2xl font-semibold text-base
+           bg-tg-button text-tg-button-text shadow-md
            transition-all duration-200
-           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+           active:scale-[0.97] active:shadow-sm
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
   .btn-secondary {
-    @apply w-full py-3.5 rounded-xl font-semibold text-base
-           border-2 border-tg-button text-tg-button
-           bg-transparent
+    @apply w-full py-3 rounded-2xl font-medium text-base
+           bg-tg-secondary-bg text-tg-text
            transition-all duration-200
-           active:scale-[0.98];
+           active:scale-[0.97];
+  }
+
+  .btn-destructive {
+    @apply w-full py-3 rounded-2xl font-medium text-base
+           text-red-500
+           transition-all duration-200
+           active:scale-[0.97];
+    background: rgb(239 68 68 / 0.1);
   }
 
   .input-field {

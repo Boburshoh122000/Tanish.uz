@@ -82,9 +82,9 @@ export default function ProfileEditPage() {
       user.interests?.map((i) => i.id) ?? [],
     );
     // Preferences
-    if (user.showMeGender) setShowMe(user.showMeGender);
-    if (user.ageRangeMin) setAgeMin(user.ageRangeMin);
-    if (user.ageRangeMax) setAgeMax(user.ageRangeMax);
+    if (user.genderPref) setShowMe(user.genderPref);
+    if (user.minAge) setAgeMin(user.minAge);
+    if (user.maxAge) setAgeMax(user.maxAge);
   }, [user]);
 
   // Load interests list
@@ -116,17 +116,24 @@ export default function ProfileEditPage() {
       const file = e.target.files?.[0];
       if (!file) return;
       setUploading(true);
-      const res = (await api.upload.photo(file)) as {
-        success: boolean;
-        data?: { photo: { id: string; url: string; position: number } };
-      };
-      if (res.success && res.data) {
-        setPhotos((prev) => [...prev, res.data!.photo]);
+      try {
+        const res = (await api.upload.photo(file)) as {
+          success: boolean;
+          data?: { id: string; url: string; position: number };
+          error?: string;
+        };
+        if (res.success && res.data) {
+          setPhotos((prev) => [...prev, { id: res.data!.id, url: res.data!.url, position: res.data!.position }]);
+        } else {
+          WebApp.showPopup({ title: t('common.error'), message: res.error || t('common.retry'), buttons: [{ type: 'ok' }] });
+        }
+      } catch {
+        WebApp.showPopup({ title: t('common.error'), message: t('common.retry'), buttons: [{ type: 'ok' }] });
+      } finally {
+        setUploading(false);
+        setUploadSlot(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-      setUploading(false);
-      setUploadSlot(null);
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
     },
     [],
   );
@@ -198,9 +205,9 @@ export default function ProfileEditPage() {
       lookingFor,
       interestIds: selectedInterests,
       languages,
-      showMeGender: showMe,
-      ageRangeMin: ageMin,
-      ageRangeMax: ageMax,
+      genderPref: showMe === 'BOTH' ? null : showMe,
+      minAge: ageMin,
+      maxAge: ageMax,
     })) as { success: boolean; data?: UserProfile };
     if (res.success && res.data) {
       setUser(res.data);
