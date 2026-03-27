@@ -208,7 +208,11 @@
     },
     "free": "Free",
     "premiumLabel": "Premium",
-    "comparison": "Compare plans"
+    "comparison": "Compare plans",
+    "promo": {
+      "badge": "Limited offer",
+      "firstMonth": "First month at half price!"
+    }
   },
 
   "referral": {
@@ -244,6 +248,62 @@
     "title": "Blocked users",
     "empty": "No blocked users",
     "emptySubtitle": "Users you block will appear here"
+  },
+
+  "admin": {
+    "title": "Admin Dashboard",
+    "accessDenied": "Access denied",
+    "accessDeniedDesc": "You don't have admin access",
+    "liveMetrics": "Live Metrics",
+    "dau": "DAU",
+    "signupsToday": "Signups",
+    "introsToday": "Intros",
+    "matchesToday": "Matches",
+    "activeNow": "Active now",
+    "genderRatio": "Gender Ratio",
+    "male": "Male",
+    "female": "Female",
+    "healthy": "Healthy",
+    "warning": "Warning",
+    "critical": "Critical",
+    "last30Days": "Last 30 days",
+    "quickStats": "Quick Stats",
+    "matchRate": "Match rate",
+    "responseRate": "Response rate",
+    "premiumConversion": "Premium conv.",
+    "pendingVerifications": "Pending Verifications",
+    "selfie": "Selfie",
+    "approve": "Approve",
+    "reject": "Reject",
+    "confirmReject": "Confirm reject",
+    "rejectionReason": "Rejection reason...",
+    "noVerifications": "No pending verifications",
+    "pendingReports": "Pending Reports",
+    "dismiss": "Dismiss",
+    "warn": "Warn",
+    "suspend": "Suspend",
+    "ban": "Ban",
+    "noReports": "No pending reports",
+    "totalReports": "{{count}} reports",
+    "reportedBy": "Reported by"
+  },
+
+  "verification": {
+    "title": "Verify your profile",
+    "verified": "Verified",
+    "verifiedDescription": "Your profile has been verified. Others can see you're a real person.",
+    "pending": "Verification pending",
+    "pendingDescription": "We're reviewing your selfie. This usually takes less than 24 hours.",
+    "rejected": "Verification not approved",
+    "rejectedReason": "Reason: {{reason}}",
+    "tryAgain": "Try again",
+    "instructions": "Take a selfie holding your hand next to your face",
+    "instructionsTip": "Make sure your face is clearly visible and well-lit",
+    "takePhoto": "Take selfie",
+    "retake": "Retake",
+    "submit": "Submit for review",
+    "submitting": "Submitting...",
+    "submitSuccess": "Selfie submitted! We'll review it soon."
   },
 
   "nav": {

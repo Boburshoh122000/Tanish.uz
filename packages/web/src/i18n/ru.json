@@ -208,7 +208,11 @@
     },
     "free": "Бесплатно",
     "premiumLabel": "Премиум",
-    "comparison": "Сравнить тарифы"
+    "comparison": "Сравнить тарифы",
+    "promo": {
+      "badge": "Акция",
+      "firstMonth": "Первый месяц за полцены!"
+    }
   },
 
   "referral": {
@@ -244,6 +248,62 @@
     "title": "Заблокированные",
     "empty": "Нет заблокированных",
     "emptySubtitle": "Заблокированные пользователи появятся здесь"
+  },
+
+  "admin": {
+    "title": "Панель администратора",
+    "accessDenied": "Доступ запрещён",
+    "accessDeniedDesc": "У вас нет прав администратора",
+    "liveMetrics": "Текущие метрики",
+    "dau": "DAU",
+    "signupsToday": "Регистрации",
+    "introsToday": "Интро",
+    "matchesToday": "Совпадения",
+    "activeNow": "Сейчас онлайн",
+    "genderRatio": "Соотношение полов",
+    "male": "Мужчины",
+    "female": "Женщины",
+    "healthy": "Норма",
+    "warning": "Внимание",
+    "critical": "Критично",
+    "last30Days": "Последние 30 дней",
+    "quickStats": "Статистика",
+    "matchRate": "Конверсия в пары",
+    "responseRate": "Ответы на интро",
+    "premiumConversion": "Конверсия Premium",
+    "pendingVerifications": "Верификация",
+    "selfie": "Селфи",
+    "approve": "Одобрить",
+    "reject": "Отклонить",
+    "confirmReject": "Подтвердить отказ",
+    "rejectionReason": "Причина отказа...",
+    "noVerifications": "Нет ожидающих верификаций",
+    "pendingReports": "Жалобы",
+    "dismiss": "Снять",
+    "warn": "Предупр.",
+    "suspend": "Блок",
+    "ban": "Бан",
+    "noReports": "Нет ожидающих жалоб",
+    "totalReports": "{{count}} жалоб",
+    "reportedBy": "Жалоба от"
+  },
+
+  "verification": {
+    "title": "Подтвердите профиль",
+    "verified": "Подтверждён",
+    "verifiedDescription": "Ваш профиль подтверждён. Другие видят, что вы реальный человек.",
+    "pending": "Проверка на рассмотрении",
+    "pendingDescription": "Мы проверяем ваше селфи. Обычно это занимает менее 24 часов.",
+    "rejected": "Верификация не пройдена",
+    "rejectedReason": "Причина: {{reason}}",
+    "tryAgain": "Попробовать снова",
+    "instructions": "Сделайте селфи, держа руку рядом с лицом",
+    "instructionsTip": "Убедитесь, что лицо хорошо видно и освещено",
+    "takePhoto": "Сделать селфи",
+    "retake": "Переснять",
+    "submit": "Отправить на проверку",
+    "submitting": "Отправка...",
+    "submitSuccess": "Селфи отправлено! Мы проверим его в ближайшее время."
   },
 
   "nav": {

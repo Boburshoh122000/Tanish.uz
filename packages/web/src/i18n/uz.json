@@ -208,7 +208,11 @@
     },
     "free": "Bepul",
     "premiumLabel": "Premium",
-    "comparison": "Tariflarni solishtirish"
+    "comparison": "Tariflarni solishtirish",
+    "promo": {
+      "badge": "Chegirma",
+      "firstMonth": "Birinchi oy yarim narxda!"
+    }
   },
 
   "referral": {
@@ -244,6 +248,62 @@
     "title": "Bloklangan foydalanuvchilar",
     "empty": "Bloklangan foydalanuvchilar yo'q",
     "emptySubtitle": "Siz bloklagan foydalanuvchilar shu yerda ko'rinadi"
+  },
+
+  "admin": {
+    "title": "Admin panel",
+    "accessDenied": "Ruxsat yo'q",
+    "accessDeniedDesc": "Sizda admin huquqi yo'q",
+    "liveMetrics": "Joriy ko'rsatkichlar",
+    "dau": "DAU",
+    "signupsToday": "Ro'yxatdan o'tish",
+    "introsToday": "Tanishuvlar",
+    "matchesToday": "Juftliklar",
+    "activeNow": "Hozir onlayn",
+    "genderRatio": "Jins nisbati",
+    "male": "Erkaklar",
+    "female": "Ayollar",
+    "healthy": "Normal",
+    "warning": "Ogohlantirish",
+    "critical": "Kritik",
+    "last30Days": "Oxirgi 30 kun",
+    "quickStats": "Statistika",
+    "matchRate": "Juftlik darajasi",
+    "responseRate": "Javob darajasi",
+    "premiumConversion": "Premium konversiya",
+    "pendingVerifications": "Tekshiruvlar",
+    "selfie": "Selfi",
+    "approve": "Tasdiqlash",
+    "reject": "Rad etish",
+    "confirmReject": "Rad etishni tasdiqlash",
+    "rejectionReason": "Rad etish sababi...",
+    "noVerifications": "Kutilayotgan tekshiruvlar yo'q",
+    "pendingReports": "Shikoyatlar",
+    "dismiss": "Bekor",
+    "warn": "Ogohl.",
+    "suspend": "To'xtat",
+    "ban": "Ban",
+    "noReports": "Kutilayotgan shikoyatlar yo'q",
+    "totalReports": "{{count}} ta shikoyat",
+    "reportedBy": "Shikoyat qilgan"
+  },
+
+  "verification": {
+    "title": "Profilingizni tasdiqlang",
+    "verified": "Tasdiqlangan",
+    "verifiedDescription": "Profilingiz tasdiqlangan. Boshqalar sizni haqiqiy odam ekanligingizni ko'radi.",
+    "pending": "Tekshiruv kutilmoqda",
+    "pendingDescription": "Biz selfiingizni ko'rib chiqyapmiz. Odatda 24 soatdan kam vaqt oladi.",
+    "rejected": "Tekshiruv o'tmadi",
+    "rejectedReason": "Sabab: {{reason}}",
+    "tryAgain": "Qaytadan urinish",
+    "instructions": "Qo'lingizni yuzingiz yonida tutib selfi oling",
+    "instructionsTip": "Yuzingiz aniq ko'rinishi va yaxshi yoritilganligiga ishonch hosil qiling",
+    "takePhoto": "Selfi olish",
+    "retake": "Qaytadan olish",
+    "submit": "Tekshiruvga yuborish",
+    "submitting": "Yuborilmoqda...",
+    "submitSuccess": "Selfi yuborildi! Biz uni tez orada ko'rib chiqamiz."
   },
 
   "nav": {

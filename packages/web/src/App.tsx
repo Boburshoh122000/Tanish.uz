@@ -11,7 +11,33 @@ import ProfileViewPage from './pages/profile/ProfileViewPage';
 import IntrosPage from './pages/intros/IntrosPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import BlockedUsersPage from './pages/settings/BlockedUsersPage';
+import ReferralsPage from './pages/referrals/ReferralsPage';
+import PremiumPage from './pages/premium/PremiumPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import VerificationQueue from './pages/admin/VerificationQueue';
+import ReportQueue from './pages/admin/ReportQueue';
 import BottomNav from './components/BottomNav';
+
+const ADMIN_IDS = ((import.meta.env.VITE_ADMIN_IDS as string) || '').split(',').filter(Boolean);
+
+function AdminGuard() {
+  const { user } = useAppStore();
+  if (!user || !ADMIN_IDS.includes(user.telegramId)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen pb-20 px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-tg-secondary-bg flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-tg-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h2 className="text-lg font-bold text-tg-text mb-1">Access denied</h2>
+        <p className="text-sm text-tg-hint">You don't have admin access</p>
+      </div>
+    );
+  }
+  return <Outlet />;
+}
 
 function Layout() {
   return (
@@ -89,8 +115,15 @@ export default function App() {
           {/* /profile/edit MUST come before /profile/:id — otherwise "edit" is captured as an :id param */}
           <Route path="/profile/edit" element={<ProfileEditPage />} />
           <Route path="/profile/:id" element={<ProfileViewPage />} />
+          <Route path="/referrals" element={<ReferralsPage />} />
+          <Route path="/premium" element={<PremiumPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/blocked" element={<BlockedUsersPage />} />
+          <Route element={<AdminGuard />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/verifications" element={<VerificationQueue />} />
+            <Route path="/admin/reports" element={<ReportQueue />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/discovery" replace />} />
       </Routes>

@@ -83,8 +83,8 @@ export const api = {
   },
 
   onboarding: {
-    complete: (data: any) =>
-      request('/onboarding/complete', {
+    complete: (data: any, referralCode?: string | null) =>
+      request(`/onboarding/complete${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ''}`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -141,6 +141,42 @@ export const api = {
       request(`/blocks/${id}`, { method: 'DELETE' }),
   },
 
+  referrals: {
+    getLink: () =>
+      request<{ code: string; link: string }>('/referrals/link'),
+    getStats: () =>
+      request<{ totalReferred: number; completedSignups: number; bonusMatchesEarned: number }>('/referrals/stats'),
+  },
+
+  premium: {
+    status: () =>
+      request<{ isPremium: boolean; premiumUntil: string | null; daysRemaining: number }>('/premium/status'),
+    createInvoice: (promo?: boolean) =>
+      request<{ invoiceUrl: string }>('/premium/create-invoice', {
+        method: 'POST',
+        body: JSON.stringify({ promo }),
+      }),
+  },
+
+  verification: {
+    submit: async (file: File) => {
+      const formData = new FormData();
+      formData.append('selfie', file);
+
+      const res = await fetch(`${API_BASE}/verify/submit`, {
+        method: 'POST',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        body: formData,
+      });
+
+      return res.json();
+    },
+    status: () =>
+      request<{ status: string; rejectionReason?: string; createdAt?: string }>(
+        '/verify/status',
+      ),
+  },
+
   photos: {
     delete: (id: string) =>
       request(`/photos/${id}`, { method: 'DELETE' }),
@@ -149,6 +185,33 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ photoIds }),
       }),
+  },
+
+  admin: {
+    getMetrics: (from?: string, to?: string) => {
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const qs = params.toString();
+      return request(`/admin/metrics${qs ? `?${qs}` : ''}`);
+    },
+    getLiveMetrics: () => request('/admin/metrics/live'),
+    getPendingVerifications: (page = 1) =>
+      request(`/admin/verifications/pending?page=${page}`),
+    reviewVerification: (id: string, data: { approved: boolean; rejectionReason?: string }) =>
+      request(`/admin/verifications/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    getPendingReports: (page = 1) =>
+      request(`/admin/reports/pending?page=${page}`),
+    reviewReport: (id: string, data: { action: 'dismiss' | 'warn' | 'suspend' | 'ban' }) =>
+      request(`/admin/reports/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    getUser: (telegramId: string) =>
+      request(`/admin/users/${telegramId}`),
   },
 
   upload: {
