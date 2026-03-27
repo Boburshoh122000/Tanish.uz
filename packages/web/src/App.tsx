@@ -51,6 +51,16 @@ function AdminGuard() {
   return <Outlet />;
 }
 
+function OnboardingGuard() {
+  const { user } = useAppStore();
+  // If user exists but hasn't completed onboarding, force them there.
+  // This catches users who navigate directly or where the auth redirect races.
+  if (user && !user.profileComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <Outlet />;
+}
+
 function Layout() {
   return (
     <>
@@ -121,6 +131,7 @@ export default function App() {
     <div className="min-h-screen bg-tg-bg">
       <Routes>
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route element={<OnboardingGuard />}>
         <Route element={<Layout />}>
           <Route path="/discovery" element={<DiscoveryPage />} />
           <Route path="/intros" element={<IntrosPage />} />
@@ -138,6 +149,7 @@ export default function App() {
             <Route path="/admin/verifications" element={<Suspense fallback={<LoadingScreen />}><VerificationQueue /></Suspense>} />
             <Route path="/admin/reports" element={<Suspense fallback={<LoadingScreen />}><ReportQueue /></Suspense>} />
           </Route>
+        </Route>
         </Route>
         <Route path="*" element={<Navigate to="/discovery" replace />} />
       </Routes>

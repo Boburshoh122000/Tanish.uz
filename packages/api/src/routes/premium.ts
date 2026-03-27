@@ -24,8 +24,8 @@ export async function premiumRoutes(app: FastifyInstance) {
     const { promo } = (request.body as { promo?: boolean }) || {};
 
     try {
-      const invoiceLink = await premiumService!.createInvoice(userId, promo);
-      return reply.send({ success: true, data: { invoiceLink } });
+      const invoiceUrl = await premiumService!.createInvoice(userId, promo);
+      return reply.send({ success: true, data: { invoiceUrl } });
     } catch (err: any) {
       return reply.status(400).send({ success: false, error: err.message });
     }

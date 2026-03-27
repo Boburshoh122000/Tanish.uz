@@ -240,7 +240,12 @@ async function start() {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`🤖 Bot webhook server running on port ${PORT}`);
   } else {
-    console.log('🤖 Starting bot in long polling mode...');
+    // Clear any stale webhook — Telegram ignores polling if a webhook is registered.
+    // This is the #1 cause of "bot stops responding after Railway restart".
+    console.log('🤖 Clearing any stale webhook before polling...');
+    await bot.api.deleteWebhook({ drop_pending_updates: true });
+    console.log('✅ Webhook cleared, starting long polling...');
+
     await bot.start({
       onStart: () => console.log('🤖 Tanish Bot is running!'),
     });

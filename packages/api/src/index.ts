@@ -70,6 +70,14 @@ await app.register(rateLimit, {
 app.decorate('prisma', prisma);
 app.decorate('eloService', eloService);
 
+// Safety net: convert any BigInt values to strings before JSON serialization.
+// Prisma returns telegramId as BigInt which crashes JSON.stringify.
+app.addHook('preSerialization', (_request, _reply, payload, done) => {
+  done(null, JSON.parse(JSON.stringify(payload, (_key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  )));
+});
+
 // Health check with DB + Redis connectivity
 const startTime = Date.now();
 app.get('/api/health', async () => {
