@@ -4,35 +4,41 @@ import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
 import { api } from '@/lib/api';
 
-interface LiveMetrics {
+// Matches the actual GET /admin/stats backend response
+interface LiveStats {
+  totalUsers: number;
   dau: number;
-  signupsToday: number;
-  introsToday: number;
+  newSignupsToday: number;
+  pendingReports: number;
   matchesToday: number;
+  introsSentToday: number;
+  premiumUsers: number;
   activeNow: number;
+  genderRatio: number | null;
+  activeMales: number;
+  activeFemales: number;
 }
 
+// Matches entries in the GET /admin/metrics backend response array
 interface DailyMetric {
   date: string;
   dau: number;
-  intros: number;
-  matches: number;
-}
-
-interface FullMetrics {
-  genderRatio: { male: number; female: number };
+  introsSent: number;
+  matchesCreated: number;
   matchRate: number;
   responseRate: number;
   premiumConversion: number;
-  dailyMetrics: DailyMetric[];
+  activeMales: number;
+  activeFemales: number;
 }
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [live, setLive] = useState<LiveMetrics | null>(null);
-  const [metrics, setMetrics] = useState<FullMetrics | null>(null);
+  const [live, setLive] = useState<LiveStats | null>(null);
+  const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -52,18 +58,32 @@ export default function AdminDashboard() {
   }, []);
 
   async function loadAll() {
-    await Promise.all([loadLive(), loadMetrics()]);
-    setLoading(false);
+    try {
+      await Promise.all([loadLive(), loadMetrics()]);
+    } catch (err) {
+      console.error('Admin dashboard load failed:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadLive() {
-    const res = (await api.admin.getLiveMetrics()) as { success: boolean; data?: LiveMetrics };
-    if (res.success && res.data) setLive(res.data);
+    try {
+      const res = (await api.admin.getLiveMetrics()) as { success: boolean; data?: LiveStats };
+      if (res.success && res.data) setLive(res.data);
+    } catch (err) {
+      console.error('Live metrics load failed:', err);
+    }
   }
 
   async function loadMetrics() {
-    const res = (await api.admin.getMetrics()) as { success: boolean; data?: FullMetrics };
-    if (res.success && res.data) setMetrics(res.data);
+    try {
+      const res = (await api.admin.getMetrics()) as { success: boolean; data?: DailyMetric[] };
+      if (res.success && res.data) setDailyMetrics(res.data);
+    } catch (err) {
+      console.error('Metrics load failed:', err);
+    }
   }
 
   if (loading) {
@@ -73,6 +93,21 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  if (error && !live) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <span className="text-4xl mb-3">⚠️</span>
+        <h2 className="text-lg font-bold text-tg-text mb-1">{error}</h2>
+        <button onClick={() => { setLoading(true); setError(null); loadAll(); }} className="btn-primary mt-4 text-sm py-2 px-6">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // Compute rates from the latest daily metric (if available)
+  const latest = dailyMetrics.length > 0 ? dailyMetrics[0] : null;
 
   return (
     <div className="pb-24">
@@ -89,8 +124,8 @@ export default function AdminDashboard() {
             </h3>
             <div className="grid grid-cols-2 gap-2">
               <MetricCard label={t('admin.dau')} value={live.dau} />
-              <MetricCard label={t('admin.signupsToday')} value={live.signupsToday} accent />
-              <MetricCard label={t('admin.introsToday')} value={live.introsToday} />
+              <MetricCard label={t('admin.signupsToday')} value={live.newSignupsToday} accent />
+              <MetricCard label={t('admin.introsToday')} value={live.introsSentToday} />
               <MetricCard label={t('admin.matchesToday')} value={live.matchesToday} />
               <MetricCard label={t('admin.activeNow')} value={live.activeNow} pulse className="col-span-2" />
             </div>
@@ -98,19 +133,19 @@ export default function AdminDashboard() {
         )}
 
         {/* Gender ratio */}
-        {metrics && (
-          <GenderGauge male={metrics.genderRatio.male} female={metrics.genderRatio.female} />
+        {live && (live.activeMales > 0 || live.activeFemales > 0) && (
+          <GenderGauge male={live.activeMales} female={live.activeFemales} />
         )}
 
         {/* Charts — last 30 days */}
-        {metrics?.dailyMetrics && metrics.dailyMetrics.length > 0 && (
+        {dailyMetrics.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-xs font-semibold text-tg-section-header uppercase tracking-wider">
               {t('admin.last30Days')}
             </h3>
             <div className="card p-4 space-y-2">
               <p className="text-xs text-tg-hint">{t('admin.dau')}</p>
-              <MiniBarChart data={metrics.dailyMetrics.map((d) => d.dau)} color="bg-tg-button" />
+              <MiniBarChart data={dailyMetrics.map((d) => d.dau)} color="bg-tg-button" />
             </div>
             <div className="card p-4 space-y-2">
               <div className="flex justify-between text-xs text-tg-hint">
@@ -119,10 +154,10 @@ export default function AdminDashboard() {
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <MiniBarChart data={metrics.dailyMetrics.map((d) => d.intros)} color="bg-brand-400" />
+                  <MiniBarChart data={dailyMetrics.map((d) => d.introsSent)} color="bg-brand-400" />
                 </div>
                 <div className="flex-1">
-                  <MiniBarChart data={metrics.dailyMetrics.map((d) => d.matches)} color="bg-green-500" />
+                  <MiniBarChart data={dailyMetrics.map((d) => d.matchesCreated)} color="bg-green-500" />
                 </div>
               </div>
             </div>
@@ -130,15 +165,15 @@ export default function AdminDashboard() {
         )}
 
         {/* Quick stats */}
-        {metrics && (
+        {latest && (
           <div>
             <h3 className="text-xs font-semibold text-tg-section-header uppercase tracking-wider mb-2">
               {t('admin.quickStats')}
             </h3>
             <div className="grid grid-cols-3 gap-2">
-              <PercentCard label={t('admin.matchRate')} value={metrics.matchRate} />
-              <PercentCard label={t('admin.responseRate')} value={metrics.responseRate} />
-              <PercentCard label={t('admin.premiumConversion')} value={metrics.premiumConversion} />
+              <PercentCard label={t('admin.matchRate')} value={latest.matchRate} />
+              <PercentCard label={t('admin.responseRate')} value={latest.responseRate} />
+              <PercentCard label={t('admin.premiumConversion')} value={latest.premiumConversion} />
             </div>
           </div>
         )}
@@ -184,7 +219,7 @@ function MetricCard({
     <div className={`card p-3 ${className}`}>
       <p className="text-xs text-tg-hint mb-1">{label}</p>
       <p className={`text-2xl font-bold ${accent ? 'text-tg-button' : 'text-tg-text'}`}>
-        {value.toLocaleString()}
+        {(value ?? 0).toLocaleString()}
         {pulse && (
           <span className="inline-block w-2 h-2 bg-green-500 rounded-full ml-2 animate-pulse" />
         )}
@@ -241,10 +276,10 @@ function MiniBarChart({ data, color }: { data: number[]; color: string }) {
 }
 
 function PercentCard({ label, value }: { label: string; value: number }) {
-  const pct = Math.round(value * 100);
+  // Backend returns matchRate/responseRate/premiumConversion as 0-100 integers
   return (
     <div className="card p-3 text-center">
-      <p className="text-2xl font-bold text-tg-text">{pct}%</p>
+      <p className="text-2xl font-bold text-tg-text">{Math.round(value ?? 0)}%</p>
       <p className="text-[10px] text-tg-hint mt-0.5 leading-tight">{label}</p>
     </div>
   );

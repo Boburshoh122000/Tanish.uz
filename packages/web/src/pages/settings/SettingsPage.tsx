@@ -156,7 +156,7 @@ export default function SettingsPage() {
             onClick={() => navigate('/verify')}
             className="w-full text-left text-sm text-tg-text py-2.5 flex justify-between items-center"
           >
-            <span>{t('profile.verification')}</span>
+            <span>{t('verification.title')}</span>
             <span className={user?.verified ? 'text-green-500 text-xs' : 'text-tg-hint text-xs'}>
               {user?.verified ? '✓' : t('profile.verifyNow')}
             </span>
