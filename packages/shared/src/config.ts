@@ -31,11 +31,11 @@ const envSchema = z.object({
       WEBHOOK_SECRET: z.string().optional(),
 
       // Cloudflare R2
-      R2_ACCOUNT_ID: z.string().min(1).optional(),
-      R2_ACCESS_KEY_ID: z.string().min(1).optional(),
-      R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+      R2_ACCOUNT_ID: z.string().default(''),
+      R2_ACCESS_KEY_ID: z.string().default(''),
+      R2_SECRET_ACCESS_KEY: z.string().default(''),
       R2_BUCKET_NAME: z.string().default('tanish-photos'),
-      R2_PUBLIC_URL: z.string().url().optional(),
+      R2_PUBLIC_URL: z.string().default(''),
 
       // Admin
       ADMIN_TELEGRAM_IDS: z
