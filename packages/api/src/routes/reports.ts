@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
 import { prisma, eloService, tracker } from '../index.js';
 import { createReportSchema, LIMITS, EVENT_TYPES } from '@tanish/shared';
+import { filterContent } from '../services/content-filter.js';
 
 export async function reportRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -19,7 +20,8 @@ export async function reportRoutes(app: FastifyInstance) {
       });
     }
 
-    const { reportedId, reason, details } = body.data;
+    const { reportedId, reason } = body.data;
+    const details = body.data.details ? filterContent(body.data.details).text : undefined;
 
     if (userId === reportedId) {
       return reply.status(400).send({ success: false, error: 'Cannot report yourself' });

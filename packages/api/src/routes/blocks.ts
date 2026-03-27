@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
 import { prisma } from '../index.js';
+import { createBlockSchema } from '@tanish/shared';
 
 export async function blockRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authMiddleware);
@@ -8,11 +9,16 @@ export async function blockRoutes(app: FastifyInstance) {
   // POST /api/blocks/create
   app.post('/create', async (request, reply) => {
     const userId = request.userId;
-    const { blockedUserId } = request.body as { blockedUserId: string };
+    const parsed = createBlockSchema.safeParse(request.body);
 
-    if (!blockedUserId) {
-      return reply.status(400).send({ success: false, error: 'blockedUserId is required' });
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid request' },
+      });
     }
+
+    const { blockedUserId } = parsed.data;
 
     if (userId === blockedUserId) {
       return reply.status(400).send({ success: false, error: 'Cannot block yourself' });

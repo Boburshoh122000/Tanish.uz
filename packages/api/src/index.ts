@@ -5,7 +5,7 @@ import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { Bot } from 'grammy';
-import { connectRedis, disconnectRedis } from './services/redis.js';
+import { connectRedis, disconnectRedis, getRedis } from './services/redis.js';
 import { EloService } from './services/elo.service.js';
 import { NotificationService } from './services/notification.service.js';
 import { registerCronJobs, stopCronJobs } from './cron/index.js';
@@ -71,13 +71,43 @@ await app.register(rateLimit, {
 app.decorate('prisma', prisma);
 app.decorate('eloService', eloService);
 
-// Health check
-app.get('/api/health', async () => ({
-  status: 'ok',
-  timestamp: new Date().toISOString(),
-  version: '0.3.0',
-  phase: 3,
-}));
+// Health check with DB + Redis connectivity
+const startTime = Date.now();
+app.get('/api/health', async () => {
+  let db = false;
+  let redis = false;
+
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    db = true;
+  } catch { /* db unreachable */ }
+
+  try {
+    const r = getRedis();
+    await r.ping();
+    redis = true;
+  } catch { /* redis unreachable */ }
+
+  return {
+    status: db ? 'ok' : 'degraded',
+    db,
+    redis,
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    timestamp: new Date().toISOString(),
+    version: '0.3.0',
+  };
+});
+
+// Request logging (method, path, userId, status, duration)
+app.addHook('onResponse', (request, reply, done) => {
+  const duration = reply.elapsedTime?.toFixed(1) ?? '?';
+  const userId = request.userId ?? '-';
+  app.log.info(
+    { method: request.method, url: request.url, userId, statusCode: reply.statusCode, durationMs: duration },
+    `${request.method} ${request.url} ${reply.statusCode} ${duration}ms`,
+  );
+  done();
+});
 
 // ===== Routes =====
 await app.register(authRoutes, { prefix: '/api/auth' });
@@ -95,13 +125,31 @@ await app.register(adminRoutes, { prefix: '/api/admin' });
 await app.register(verificationRoutes, { prefix: '/api/verify' });
 
 // ===== Graceful shutdown =====
+let isShuttingDown = false;
 const shutdown = async (signal: string) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
   app.log.info(`Received ${signal}, shutting down...`);
-  stopCronJobs();
-  if (notificationService) await notificationService.shutdown();
-  await app.close();
-  await disconnectRedis();
-  await prisma.$disconnect();
+
+  // Force exit after 10s if graceful shutdown stalls
+  const forceTimer = setTimeout(() => {
+    app.log.error('Graceful shutdown timed out after 10s, forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceTimer.unref();
+
+  try {
+    stopCronJobs();
+    if (notificationService) await notificationService.shutdown();
+    await app.close();
+    await disconnectRedis();
+    await prisma.$disconnect();
+  } catch (err) {
+    app.log.error(err, 'Error during shutdown');
+  }
+
+  clearTimeout(forceTimer);
   process.exit(0);
 };
 
@@ -131,11 +179,10 @@ try {
   premiumService = new PremiumService(prisma, bot);
   premiumService.setTracker(tracker);
 
-  // Register cron jobs (they handle null notificationService gracefully)
+  // Register cron jobs (notifications go through shared queue → bot worker)
   registerCronJobs({
     prisma,
     eloService,
-    notificationService: notificationService!,
     webAppUrl: WEBAPP_URL,
   });
 

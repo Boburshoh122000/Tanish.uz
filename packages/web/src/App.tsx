@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from './store';
 import { api, setAuthToken } from './lib/api';
 import OnboardingPage from './pages/onboarding/OnboardingPage';
@@ -11,15 +12,25 @@ import ProfileViewPage from './pages/profile/ProfileViewPage';
 import IntrosPage from './pages/intros/IntrosPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import BlockedUsersPage from './pages/settings/BlockedUsersPage';
-import ReferralsPage from './pages/referrals/ReferralsPage';
-import PremiumPage from './pages/premium/PremiumPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import VerificationQueue from './pages/admin/VerificationQueue';
-import ReportQueue from './pages/admin/ReportQueue';
-import VerificationPage from './pages/verification/VerificationPage';
 import BottomNav from './components/BottomNav';
 
+// Lazy-loaded pages (only fetched when user navigates to them)
+const ReferralsPage = lazy(() => import('./pages/referrals/ReferralsPage'));
+const PremiumPage = lazy(() => import('./pages/premium/PremiumPage'));
+const VerificationPage = lazy(() => import('./pages/verification/VerificationPage'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const VerificationQueue = lazy(() => import('./pages/admin/VerificationQueue'));
+const ReportQueue = lazy(() => import('./pages/admin/ReportQueue'));
+
 const ADMIN_IDS = ((import.meta.env.VITE_ADMIN_IDS as string) || '').split(',').filter(Boolean);
+
+function LoadingScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-10 h-10 border-4 border-tg-button border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AdminGuard() {
   const { user } = useAppStore();
@@ -50,6 +61,7 @@ function Layout() {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const { isLoading, setUser, setAuthenticated, setLoading } = useAppStore();
   const navigate = useNavigate();
 
@@ -72,7 +84,7 @@ export default function App() {
         return;
       }
 
-      const res = await api.auth.telegram(initData) as any;
+      const res = await api.auth.telegram(initData) as { success: boolean; data?: { token: string; user: Parameters<typeof setUser>[0]; onboardingComplete: boolean } };
       if (res.success && res.data) {
         setAuthToken(res.data.token);
         setUser(res.data.user);
@@ -85,8 +97,8 @@ export default function App() {
     } catch (err) {
       console.error('Auth failed:', err);
       WebApp.showPopup({
-        title: 'Connection Error',
-        message: 'Failed to connect. Please try again.',
+        title: t('common.error'),
+        message: t('common.retry'),
         buttons: [{ type: 'close' }],
       });
     } finally {
@@ -116,15 +128,15 @@ export default function App() {
           {/* /profile/edit MUST come before /profile/:id — otherwise "edit" is captured as an :id param */}
           <Route path="/profile/edit" element={<ProfileEditPage />} />
           <Route path="/profile/:id" element={<ProfileViewPage />} />
-          <Route path="/referrals" element={<ReferralsPage />} />
-          <Route path="/premium" element={<PremiumPage />} />
-          <Route path="/verify" element={<VerificationPage />} />
+          <Route path="/referrals" element={<Suspense fallback={<LoadingScreen />}><ReferralsPage /></Suspense>} />
+          <Route path="/premium" element={<Suspense fallback={<LoadingScreen />}><PremiumPage /></Suspense>} />
+          <Route path="/verify" element={<Suspense fallback={<LoadingScreen />}><VerificationPage /></Suspense>} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/blocked" element={<BlockedUsersPage />} />
           <Route element={<AdminGuard />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/verifications" element={<VerificationQueue />} />
-            <Route path="/admin/reports" element={<ReportQueue />} />
+            <Route path="/admin" element={<Suspense fallback={<LoadingScreen />}><AdminDashboard /></Suspense>} />
+            <Route path="/admin/verifications" element={<Suspense fallback={<LoadingScreen />}><VerificationQueue /></Suspense>} />
+            <Route path="/admin/reports" element={<Suspense fallback={<LoadingScreen />}><ReportQueue /></Suspense>} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/discovery" replace />} />

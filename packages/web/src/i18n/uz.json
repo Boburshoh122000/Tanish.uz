@@ -23,6 +23,7 @@
     "progress": "{{current}}/{{total}}-qadam",
     "step1": {
       "title": "Siz kimsiz?",
+      "subtitle": "Keling, tanishamiz",
       "gender": "Jinsingiz",
       "male": "Erkak",
       "female": "Ayol",
@@ -129,7 +130,8 @@
     "openChat": "Chatni ochish",
     "empty": "Hali juftliklar yo'q",
     "emptySubtitle": "Ikkalangiz ham savolga javob berganingizda, juftlik hosil bo'ladi!",
-    "matchedOn": "Moslik {{date}}"
+    "matchedOn": "Moslik {{date}}",
+    "noUsername": "Foydalanuvchi nomi yo'q"
   },
 
   "profile": {

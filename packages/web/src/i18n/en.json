@@ -23,6 +23,7 @@
     "progress": "Step {{current}} of {{total}}",
     "step1": {
       "title": "Who are you?",
+      "subtitle": "Let's get to know you",
       "gender": "Your gender",
       "male": "Male",
       "female": "Female",
@@ -129,7 +130,8 @@
     "openChat": "Open chat",
     "empty": "No matches yet",
     "emptySubtitle": "When both of you answer the icebreaker, you'll match!",
-    "matchedOn": "Matched {{date}}"
+    "matchedOn": "Matched {{date}}",
+    "noUsername": "No username"
   },
 
   "profile": {

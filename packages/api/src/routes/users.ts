@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
-import { profileUpdateSchema, EVENT_TYPES } from '@tanish/shared';
+import { profileUpdateSchema, notificationPrefsSchema, EVENT_TYPES } from '@tanish/shared';
 import { filterContent } from '../services/content-filter.js';
 
 export async function userRoutes(app: FastifyInstance) {
@@ -166,10 +166,19 @@ export async function userRoutes(app: FastifyInstance) {
     });
   });
 
-  // POST /api/users/me/notifications — update notification preferences
+  // PATCH /api/users/me/notifications — update notification preferences
   app.patch('/me/notifications', async (request, reply) => {
     const userId = request.userId;
-    const { dailyBatch, intros, matches, reEngagement } = request.body as any;
+    const parsed = notificationPrefsSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid request' },
+      });
+    }
+
+    const { dailyBatch, intros, matches, reEngagement } = parsed.data;
 
     await prisma.user.update({
       where: { id: userId },
@@ -181,7 +190,7 @@ export async function userRoutes(app: FastifyInstance) {
       },
     });
 
-    return reply.send({ success: true, message: 'Notification preferences updated' });
+    return reply.send({ success: true, data: { updated: true } });
   });
 
   // DELETE /api/users/me — soft delete account

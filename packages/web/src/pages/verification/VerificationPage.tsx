@@ -74,7 +74,7 @@ export default function VerificationPage() {
       } else {
         WebApp.showPopup({
           title: t('common.error'),
-          message: typeof res.error === 'string' ? res.error : 'Failed to submit.',
+          message: typeof res.error === 'string' ? res.error : t('common.error'),
           buttons: [{ type: 'close' }],
         });
       }
