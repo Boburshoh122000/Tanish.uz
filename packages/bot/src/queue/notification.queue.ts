@@ -59,7 +59,7 @@ export type NotificationJobData =
 
 // ===== Constants =====
 
-export const QUEUE_NAME = 'tanish:notifications';
+export const QUEUE_NAME = 'tanish-notifications';
 const COOLDOWN_TTL_SECONDS = 120; // 2 min cooldown per user
 
 // ===== Redis Connection =====
