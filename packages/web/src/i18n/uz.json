@@ -103,7 +103,11 @@
     "expired": "Muddati tugagan",
     "expiresIn": "{{hours}} soatda tugaydi",
     "empty": "Kiruvchi tanishuvlar yo'q",
-    "emptySubtitle": "Boshlash uchun tanishlar ro'yxatidan birovga salom ayting!"
+    "emptySubtitle": "Boshlash uchun tanishlar ro'yxatidan birovga salom ayting!",
+    "matchedTab": "Juftliklar",
+    "matchedEmpty": "Hali juftliklar yo'q",
+    "matchedEmptySubtitle": "Ikkalangiz ham savolga javob berganingizda, juftlik hosil bo'ladi!",
+    "openChat": "Chatni ochish"
   },
 
   "matches": {
@@ -116,6 +120,7 @@
 
   "profile": {
     "title": "Profil",
+    "myProfile": "Mening profilim",
     "edit": "Profilni tahrirlash",
     "verified": "Tasdiqlangan",
     "verifyNow": "Profilni tasdiqlash",
@@ -146,7 +151,11 @@
     "deleteConfirm": "Ishonchingiz komilmi? Qayta tiklash uchun 7 kuningiz bor.",
     "completeness": "Profil {{percent}}% to'ldirilgan",
     "addBioTip": "Tavsif qo'shing — 3 baravar ko'proq moslik oling",
-    "addPhotosTip": "3+ rasmli profillar 2 baravar ko'proq tanishuv oladi"
+    "addPhotosTip": "3+ rasmli profillar 2 baravar ko'proq tanishuv oladi",
+    "completenessLabel": "Profil to'ldirilganligi",
+    "deletePhotoConfirm": "Bu rasmni o'chirasizmi?",
+    "prevPhoto": "Oldingi rasm",
+    "nextPhoto": "Keyingi rasm"
   },
 
   "settings": {
@@ -157,6 +166,12 @@
     "matchNotifs": "Yangi juftliklar",
     "reEngagement": "Eslatmalar",
     "language": "Til",
+    "blockedUsers": "Bloklangan foydalanuvchilar",
+    "pauseProfile": "Profilni to'xtatish",
+    "pauseDescription": "Profilingiz to'xtatilganda kashfiyotda ko'rinmaydi",
+    "deleteAccount": "Hisobni o'chirish",
+    "deleteConfirmTitle": "Hisobni o'chirasizmi?",
+    "deleteConfirmMessage": "Hisobingiz o'chirishga belgilanadi. Qayta tiklash uchun 7 kuningiz bor.",
     "premium": "Premium",
     "referral": "Do'stlarni taklif qilish",
     "help": "Yordam va qo'llab-quvvatlash",
@@ -211,10 +226,16 @@
     "unblock": "Blokdan chiqarish"
   },
 
+  "blocked": {
+    "title": "Bloklangan foydalanuvchilar",
+    "empty": "Bloklangan foydalanuvchilar yo'q",
+    "emptySubtitle": "Siz bloklagan foydalanuvchilar shu yerda ko'rinadi"
+  },
+
   "nav": {
     "discover": "Kashfiyot",
     "intros": "Tanishuv",
-    "matches": "Juftliklar",
-    "profile": "Profil"
+    "profile": "Profil",
+    "settings": "Sozlamalar"
   }
 }

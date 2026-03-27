@@ -103,7 +103,11 @@
     "expired": "Expired",
     "expiresIn": "Expires in {{hours}}h",
     "empty": "No pending intros",
-    "emptySubtitle": "Say hi to someone in your matches to get started!"
+    "emptySubtitle": "Say hi to someone in your matches to get started!",
+    "matchedTab": "Matched",
+    "matchedEmpty": "No matches yet",
+    "matchedEmptySubtitle": "When both of you answer the icebreaker, you'll match!",
+    "openChat": "Open chat"
   },
 
   "matches": {
@@ -116,6 +120,7 @@
 
   "profile": {
     "title": "Profile",
+    "myProfile": "My Profile",
     "edit": "Edit profile",
     "verified": "Verified",
     "verifyNow": "Verify profile",
@@ -146,7 +151,11 @@
     "deleteConfirm": "Are you sure? You have 7 days to reactivate.",
     "completeness": "Profile {{percent}}% complete",
     "addBioTip": "Add a bio to get 3x more matches",
-    "addPhotosTip": "Profiles with 3+ photos get 2x more intros"
+    "addPhotosTip": "Profiles with 3+ photos get 2x more intros",
+    "completenessLabel": "Profile completeness",
+    "deletePhotoConfirm": "Delete this photo?",
+    "prevPhoto": "Previous photo",
+    "nextPhoto": "Next photo"
   },
 
   "settings": {
@@ -157,6 +166,12 @@
     "matchNotifs": "New matches",
     "reEngagement": "Reminders",
     "language": "Language",
+    "blockedUsers": "Blocked users",
+    "pauseProfile": "Pause profile",
+    "pauseDescription": "Your profile won't appear in discovery while paused",
+    "deleteAccount": "Delete account",
+    "deleteConfirmTitle": "Delete Account?",
+    "deleteConfirmMessage": "Your account will be scheduled for deletion. You have 7 days to reactivate by logging in again.",
     "premium": "Premium",
     "referral": "Invite friends",
     "help": "Help & support",
@@ -211,10 +226,16 @@
     "unblock": "Unblock"
   },
 
+  "blocked": {
+    "title": "Blocked users",
+    "empty": "No blocked users",
+    "emptySubtitle": "Users you block will appear here"
+  },
+
   "nav": {
     "discover": "Discover",
     "intros": "Intros",
-    "matches": "Matches",
-    "profile": "Profile"
+    "profile": "Profile",
+    "settings": "Settings"
   }
 }
