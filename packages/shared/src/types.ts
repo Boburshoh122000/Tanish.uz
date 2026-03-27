@@ -80,12 +80,12 @@ export interface UserProfile {
   status: UserStatus;
   lastActiveAt: string;
   createdAt: string;
+  premiumUntil: string | null;
   // Preferences
-  showMeGender: Gender | null;
-  ageRangeMin: number;
-  ageRangeMax: number;
+  genderPref: Gender | null;
+  minAge: number;
+  maxAge: number;
   // Settings
-  paused: boolean;
   notifyDailyBatch: boolean;
   notifyIntros: boolean;
   notifyMatches: boolean;

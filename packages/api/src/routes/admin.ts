@@ -147,7 +147,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // PATCH /api/admin/reports/:id — action a report
   app.patch('/reports/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action } = request.body as { action: 'dismiss' | 'warn' | 'ban' };
+    const { action } = request.body as { action: 'dismiss' | 'warn' | 'suspend' | 'ban' };
 
     const report = await prisma.report.findUnique({
       where: { id },
@@ -174,6 +174,17 @@ export async function adminRoutes(app: FastifyInstance) {
         await prisma.report.update({
           where: { id },
           data: { status: 'ACTIONED' },
+        });
+        break;
+
+      case 'suspend':
+        await prisma.report.update({
+          where: { id },
+          data: { status: 'ACTIONED' },
+        });
+        await prisma.user.update({
+          where: { id: report.reportedId },
+          data: { status: 'SUSPENDED' },
         });
         break;
 

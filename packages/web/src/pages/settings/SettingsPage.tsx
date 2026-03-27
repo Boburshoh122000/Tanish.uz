@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
@@ -12,11 +12,14 @@ const LANGUAGES = [
   { code: 'en' as const, label: 'English' },
 ];
 
+const ADMIN_IDS = ((import.meta.env.VITE_ADMIN_IDS as string) || '').split(',').filter(Boolean);
+
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, setUser } = useAppStore();
-  const [paused, setPaused] = useState(user?.paused ?? false);
+
+  const isAdmin = user && ADMIN_IDS.includes(user.telegramId);
 
   useEffect(() => {
     const goBack = () => navigate(-1);
@@ -30,14 +33,8 @@ export default function SettingsPage() {
 
   const handleLanguageChange = async (lang: 'uz' | 'ru' | 'en') => {
     changeLanguage(lang);
-    await api.users.update({ preferredLanguage: lang });
-  };
-
-  const handlePauseToggle = async () => {
-    const next = !paused;
-    setPaused(next);
-    await api.users.update({ paused: next });
-    if (user) setUser({ ...user, paused: next });
+    const langMap = { uz: 'UZBEK', ru: 'RUSSIAN', en: 'ENGLISH' } as const;
+    await api.users.update({ preferredLanguage: langMap[lang] });
   };
 
   const handleDeleteAccount = () => {
@@ -143,25 +140,40 @@ export default function SettingsPage() {
 
           <hr className="border-tg-secondary-bg" />
 
-          <div className="py-1">
-            <ToggleRow
-              label={t('settings.pauseProfile')}
-              value={paused}
-              onChange={handlePauseToggle}
-            />
-            <p className="text-xs text-tg-hint mt-1">
-              {t('settings.pauseDescription')}
-            </p>
-          </div>
-
-          <hr className="border-tg-secondary-bg" />
-
-          <button className="w-full text-left text-sm text-tg-text py-2.5 flex justify-between items-center">
+          <button
+            onClick={() => navigate('/premium')}
+            className="w-full text-left text-sm text-tg-text py-2.5 flex justify-between items-center"
+          >
             <span>{t('settings.premium')}</span>
             <span className={user?.isPremium ? 'text-yellow-500 text-xs' : 'text-tg-hint text-xs'}>
               {user?.isPremium ? t('premium.currentPlan') : t('premium.upgrade', { price: 150 })}
             </span>
           </button>
+
+          <hr className="border-tg-secondary-bg" />
+
+          <button
+            onClick={() => navigate('/verify')}
+            className="w-full text-left text-sm text-tg-text py-2.5 flex justify-between items-center"
+          >
+            <span>{t('profile.verification')}</span>
+            <span className={user?.verified ? 'text-green-500 text-xs' : 'text-tg-hint text-xs'}>
+              {user?.verified ? '✓' : t('profile.verifyNow')}
+            </span>
+          </button>
+
+          {isAdmin && (
+            <>
+              <hr className="border-tg-secondary-bg" />
+              <button
+                onClick={() => navigate('/admin')}
+                className="w-full text-left text-sm text-tg-text py-2.5 flex justify-between items-center"
+              >
+                <span>🛡️ Admin Dashboard</span>
+                <ChevronRight />
+              </button>
+            </>
+          )}
 
           <hr className="border-tg-secondary-bg" />
 

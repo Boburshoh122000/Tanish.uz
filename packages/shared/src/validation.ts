@@ -47,6 +47,7 @@ export const profileUpdateSchema = z.object({
   minAge: z.number().min(LIMITS.MIN_AGE).max(LIMITS.MAX_AGE).optional(),
   maxAge: z.number().min(LIMITS.MIN_AGE).max(LIMITS.MAX_AGE).optional(),
   genderPref: z.enum(['MALE', 'FEMALE']).nullable().optional(),
+  preferredLanguage: z.enum(['UZBEK', 'RUSSIAN', 'ENGLISH']).optional(),
 }).refine((data) => {
   if (data.minAge !== undefined && data.maxAge !== undefined) {
     return data.minAge <= data.maxAge;

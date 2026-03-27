@@ -51,11 +51,20 @@ function AdminGuard() {
   return <Outlet />;
 }
 
-function OnboardingGuard() {
-  const { user } = useAppStore();
+function AuthGuard() {
+  const { user, isAuthenticated } = useAppStore();
+  // Block unauthenticated users from reaching protected routes
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen pb-20 px-6 text-center">
+        <span className="text-5xl mb-4">🔒</span>
+        <h2 className="text-lg font-bold text-tg-text mb-2">Open via Telegram</h2>
+        <p className="text-sm text-tg-hint">Please open Tanish through the Telegram bot.</p>
+      </div>
+    );
+  }
   // If user exists but hasn't completed onboarding, force them there.
-  // This catches users who navigate directly or where the auth redirect races.
-  if (user && !user.profileComplete) {
+  if (!user.profileComplete) {
     return <Navigate to="/onboarding" replace />;
   }
   return <Outlet />;
@@ -131,7 +140,7 @@ export default function App() {
     <div className="min-h-screen bg-tg-bg">
       <Routes>
         <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route element={<OnboardingGuard />}>
+        <Route element={<AuthGuard />}>
         <Route element={<Layout />}>
           <Route path="/discovery" element={<DiscoveryPage />} />
           <Route path="/intros" element={<IntrosPage />} />

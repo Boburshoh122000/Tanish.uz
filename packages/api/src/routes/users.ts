@@ -26,7 +26,11 @@ export async function userRoutes(app: FastifyInstance) {
 
     return reply.send({
       success: true,
-      data: { ...user, telegramId: user.telegramId.toString() },
+      data: {
+        ...user,
+        telegramId: user.telegramId.toString(),
+        interests: user.interests.map((ui: { interest: unknown }) => ui.interest),
+      },
     });
   });
 
@@ -99,7 +103,11 @@ export async function userRoutes(app: FastifyInstance) {
 
     return reply.send({
       success: true,
-      data: { ...updatedUser, telegramId: updatedUser!.telegramId.toString() },
+      data: {
+        ...updatedUser,
+        telegramId: updatedUser!.telegramId.toString(),
+        interests: updatedUser!.interests.map((ui: { interest: unknown }) => ui.interest),
+      },
     });
   });
 

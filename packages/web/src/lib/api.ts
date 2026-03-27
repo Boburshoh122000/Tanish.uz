@@ -99,7 +99,7 @@ export const api = {
     action: (profileId: string, isLike: boolean) =>
       request('/discovery/action', {
         method: 'POST',
-        body: JSON.stringify({ profileId, isLike }),
+        body: JSON.stringify({ profileId, action: isLike ? 'like' : 'pass' }),
       }),
     getQuestion: (receiverId: string) =>
       request<{ question: string; category: string }>(
@@ -195,7 +195,7 @@ export const api = {
       const qs = params.toString();
       return request(`/admin/metrics${qs ? `?${qs}` : ''}`);
     },
-    getLiveMetrics: () => request('/admin/metrics/live'),
+    getLiveMetrics: () => request('/admin/stats'),
     getPendingVerifications: (page = 1) =>
       request(`/admin/verifications/pending?page=${page}`),
     reviewVerification: (id: string, data: { approved: boolean; rejectionReason?: string }) =>
@@ -204,7 +204,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
     getPendingReports: (page = 1) =>
-      request(`/admin/reports/pending?page=${page}`),
+      request(`/admin/reports?status=PENDING&page=${page}`),
     reviewReport: (id: string, data: { action: 'dismiss' | 'warn' | 'suspend' | 'ban' }) =>
       request(`/admin/reports/${id}`, {
         method: 'PATCH',

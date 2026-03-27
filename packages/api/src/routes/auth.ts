@@ -105,6 +105,7 @@ export async function authRoutes(app: FastifyInstance) {
         user: {
           ...user,
           telegramId: user!.telegramId.toString(),
+          interests: user!.interests.map((ui: { interest: unknown }) => ui.interest),
         },
         isNewUser,
         onboardingComplete: user!.profileComplete,

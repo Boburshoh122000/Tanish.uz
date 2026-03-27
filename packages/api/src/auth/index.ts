@@ -45,7 +45,7 @@ export function validateInitData(initData: string): TelegramUser | null {
     const authDate = params.get('auth_date');
     if (authDate) {
       const authTimestamp = parseInt(authDate, 10) * 1000;
-      if (Date.now() - authTimestamp > 5 * 60 * 1000) return null;
+      if (Date.now() - authTimestamp > 60 * 60 * 1000) return null;
     }
 
     const userStr = params.get('user');

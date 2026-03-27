@@ -56,7 +56,7 @@ export default function OnboardingPage() {
         if (res.success) {
           setUser(res.data);
           WebApp.HapticFeedback.impactOccurred('medium');
-          navigate('/');
+          navigate('/discovery');
         } else {
           WebApp.showPopup({
             title: t('common.error'),
