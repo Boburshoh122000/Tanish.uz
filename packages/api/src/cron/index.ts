@@ -24,11 +24,12 @@ const tasks: cron.ScheduledTask[] = [];
  * 
  * Schedule (all times UTC → Tashkent = UTC+5):
  *   02:00 UTC (07:00 Tashkent) — Daily metrics rollup (yesterday)
- *   03:00 UTC (08:00 Tashkent) — ELO decay + Redis rebuild
+ *   22:00 UTC (03:00 Tashkent) — ELO decay + Redis rebuild
  *   04:00 UTC (09:00 Tashkent) — Daily batch generation + notifications
  *   Every hour                  — Intro expiry + warnings
  *   05:00 UTC (10:00 Tashkent) — Premium expiry check
  *   06:00 UTC (11:00 Tashkent) — Re-engagement
+ *   00:00 UTC (05:00 Tashkent) — Daily likes reset
  *   13:00 UTC Fridays (18:00 Tashkent) — Weekly spark
  */
 export function registerCronJobs(deps: CronDeps): void {
@@ -46,9 +47,9 @@ export function registerCronJobs(deps: CronDeps): void {
     })
   );
 
-  // ELO decay + Redis rebuild — 03:00 UTC daily
+  // ELO decay + Redis rebuild — 22:00 UTC (03:00 Tashkent)
   tasks.push(
-    cron.schedule('0 3 * * *', async () => {
+    cron.schedule('0 22 * * *', async () => {
       console.log('⏰ [CRON] ELO decay starting...');
       try {
         await processEloDecay(prisma, eloService);
@@ -102,6 +103,16 @@ export function registerCronJobs(deps: CronDeps): void {
       } catch (err) {
         console.error('[CRON] Re-engagement failed:', err);
       }
+    })
+  );
+
+  // Daily likes reset — 00:00 UTC (05:00 Tashkent)
+  tasks.push(
+    cron.schedule('0 0 * * *', async () => {
+      try {
+        const { count } = await prisma.user.updateMany({ where: { dailyLikesUsed: { gt: 0 } }, data: { dailyLikesUsed: 0 } });
+        if (count > 0) console.log(`[CRON] Reset dailyLikesUsed for ${count} users`);
+      } catch (err) { console.error('[CRON] Daily likes reset failed:', err); }
     })
   );
 
