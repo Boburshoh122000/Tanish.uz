@@ -68,6 +68,7 @@ export default function VerificationPage() {
         setState('pending');
         WebApp.showPopup({
           title: t('verification.submitSuccess'),
+          message: ' ',
           buttons: [{ type: 'close' }],
         });
       } else {
