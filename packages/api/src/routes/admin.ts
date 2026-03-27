@@ -429,7 +429,7 @@ export async function adminRoutes(app: FastifyInstance) {
           gender: true, status: true, isPremium: true, premiumUntil: true,
           verified: true, profileComplete: true, reportCount: true,
           createdAt: true, lastActiveAt: true,
-          _count: { select: { photos: true } },
+          photos: { orderBy: { position: 'asc' as const }, select: { id: true, url: true, position: true, verified: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (pageNum - 1) * limitNum,
@@ -441,8 +441,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const items = users.map((u) => ({
       ...u,
       telegramId: u.telegramId.toString(),
-      photoCount: u._count.photos,
-      _count: undefined,
+      photoCount: u.photos.length,
     }));
 
     return reply.send({
@@ -474,7 +473,7 @@ export async function adminRoutes(app: FastifyInstance) {
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 3,
-        select: { id: true, status: true, createdAt: true },
+        select: { id: true, status: true, selfieUrl: true, profilePhotoUrl: true, rejectionReason: true, createdAt: true },
       }),
     ]);
 

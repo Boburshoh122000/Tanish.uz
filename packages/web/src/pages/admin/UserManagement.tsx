@@ -4,6 +4,14 @@ import { useTranslation } from 'react-i18next';
 import WebApp from '@twa-dev/sdk';
 import { api } from '@/lib/api';
 import AdminNav from './AdminNav';
+import PhotoModal from '@/components/admin/PhotoModal';
+
+interface Photo {
+  id: string;
+  url: string;
+  position: number;
+  verified: boolean;
+}
 
 interface AdminUser {
   id: string;
@@ -21,6 +29,7 @@ interface AdminUser {
   createdAt: string;
   lastActiveAt: string;
   photoCount: number;
+  photos: Photo[];
 }
 
 type ModalType = 'grant' | 'message' | null;
@@ -35,6 +44,7 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState('');
   const [premiumFilter, setPremiumFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modal state
   const [modalType, setModalType] = useState<ModalType>(null);
@@ -43,6 +53,10 @@ export default function UserManagement() {
   const [grantReason, setGrantReason] = useState('');
   const [messageText, setMessageText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Photo modal
+  const [photoModalPhotos, setPhotoModalPhotos] = useState<Photo[] | null>(null);
+  const [photoModalIndex, setPhotoModalIndex] = useState(0);
 
   useEffect(() => {
     const goBack = () => navigate('/admin');
@@ -137,21 +151,13 @@ export default function UserManagement() {
 
         {/* Filters */}
         <div className="flex gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="flex-1 px-2 py-2 rounded-xl bg-tg-secondary-bg text-tg-text text-xs"
-          >
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="flex-1 px-2 py-2 rounded-xl bg-tg-secondary-bg text-tg-text text-xs">
             <option value="">{t('admin.filterByStatus')}</option>
             <option value="ACTIVE">{t('admin.active')}</option>
             <option value="SUSPENDED">{t('admin.suspended')}</option>
             <option value="BANNED">{t('admin.banned')}</option>
           </select>
-          <select
-            value={premiumFilter}
-            onChange={(e) => { setPremiumFilter(e.target.value); setPage(1); }}
-            className="flex-1 px-2 py-2 rounded-xl bg-tg-secondary-bg text-tg-text text-xs"
-          >
+          <select value={premiumFilter} onChange={(e) => { setPremiumFilter(e.target.value); setPage(1); }} className="flex-1 px-2 py-2 rounded-xl bg-tg-secondary-bg text-tg-text text-xs">
             <option value="">{t('admin.filterByPremium')}</option>
             <option value="true">{t('admin.premium')}</option>
             <option value="false">{t('admin.free')}</option>
@@ -168,41 +174,99 @@ export default function UserManagement() {
         ) : (
           <div className="space-y-2">
             {users.map((user) => (
-              <div key={user.id} className="card p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-tg-text">
-                      {user.firstName} {user.lastName || ''}
-                      {user.verified && <span className="ml-1 text-blue-500">✓</span>}
-                    </p>
-                    <p className="text-xs text-tg-hint">
-                      {user.username ? `@${user.username}` : `ID: ${user.telegramId}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {user.isPremium && (
-                      <span className="text-[10px] bg-yellow-400/20 text-yellow-600 px-1.5 py-0.5 rounded-full font-medium">⭐</span>
-                    )}
-                    <StatusBadge status={user.status} />
-                  </div>
-                </div>
+              <div key={user.id} className="card overflow-hidden">
+                {/* User row — tap to expand */}
+                <button
+                  onClick={() => setExpandedId(expandedId === user.id ? null : user.id)}
+                  className="w-full p-3 flex items-center gap-3 text-left"
+                >
+                  {/* Avatar */}
+                  <Avatar photo={user.photos?.[0]} name={user.firstName} />
 
-                <div className="flex gap-1.5 flex-wrap">
-                  {!user.isPremium ? (
-                    <ActionBtn label={t('admin.grantPremium')} onClick={() => { setSelectedUser(user); setModalType('grant'); }} />
-                  ) : (
-                    <ActionBtn label={t('admin.revokePremium')} variant="warn" onClick={() => handleRevokePremium(user)} disabled={actionLoading} />
-                  )}
-                  <ActionBtn label={t('admin.sendMessage')} onClick={() => { setSelectedUser(user); setModalType('message'); }} />
-                  {user.status === 'ACTIVE' ? (
-                    <ActionBtn label={t('admin.suspend')} variant="warn" onClick={() => handleStatusChange(user, 'SUSPENDED')} disabled={actionLoading} />
-                  ) : user.status === 'SUSPENDED' ? (
-                    <ActionBtn label={t('admin.unsuspend')} onClick={() => handleStatusChange(user, 'ACTIVE')} disabled={actionLoading} />
-                  ) : null}
-                  {user.status !== 'BANNED' && (
-                    <ActionBtn label={t('admin.ban')} variant="danger" onClick={() => handleStatusChange(user, 'BANNED')} disabled={actionLoading} />
-                  )}
-                </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-tg-text truncate">
+                        {user.firstName} {user.lastName || ''}
+                      </p>
+                      {user.verified && <span className="text-blue-500 text-xs shrink-0">✓</span>}
+                      {user.isPremium && <span className="text-yellow-500 text-xs shrink-0">⭐</span>}
+                    </div>
+                    {user.username ? (
+                      <p className="text-xs text-tg-link truncate">@{user.username}</p>
+                    ) : (
+                      <p className="text-xs text-tg-hint truncate">ID: {user.telegramId}</p>
+                    )}
+                  </div>
+
+                  {/* Status badge */}
+                  <StatusBadge status={user.status} />
+                </button>
+
+                {/* Expanded detail */}
+                {expandedId === user.id && (
+                  <div className="border-t border-tg-secondary-bg p-3 space-y-3">
+                    {/* Photos row */}
+                    {user.photos && user.photos.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {user.photos.map((photo, i) => (
+                          <button
+                            key={photo.id}
+                            onClick={() => { setPhotoModalPhotos(user.photos); setPhotoModalIndex(i); }}
+                            className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-tg-secondary-bg"
+                          >
+                            <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                            {photo.verified && (
+                              <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[8px]">✓</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Details grid */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <span className="text-tg-hint">Telegram</span>
+                      {user.username ? (
+                        <a
+                          href={`https://t.me/${user.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-tg-link font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          @{user.username}
+                        </a>
+                      ) : (
+                        <span className="text-tg-text">{user.telegramId}</span>
+                      )}
+                      <span className="text-tg-hint">{t('admin.memberSince')}</span>
+                      <span className="text-tg-text">{new Date(user.createdAt).toLocaleDateString()}</span>
+                      <span className="text-tg-hint">{t('admin.lastActive')}</span>
+                      <span className="text-tg-text">{new Date(user.lastActiveAt).toLocaleDateString()}</span>
+                      <span className="text-tg-hint">Reports</span>
+                      <span className={user.reportCount > 0 ? 'text-red-500 font-medium' : 'text-tg-text'}>{user.reportCount}</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {!user.isPremium ? (
+                        <ActionBtn label={t('admin.grantPremium')} onClick={() => { setSelectedUser(user); setModalType('grant'); }} />
+                      ) : (
+                        <ActionBtn label={t('admin.revokePremium')} variant="warn" onClick={() => handleRevokePremium(user)} disabled={actionLoading} />
+                      )}
+                      <ActionBtn label={t('admin.sendMessage')} onClick={() => { setSelectedUser(user); setModalType('message'); }} />
+                      {user.status === 'ACTIVE' ? (
+                        <ActionBtn label={t('admin.suspend')} variant="warn" onClick={() => handleStatusChange(user, 'SUSPENDED')} disabled={actionLoading} />
+                      ) : user.status === 'SUSPENDED' ? (
+                        <ActionBtn label={t('admin.unsuspend')} onClick={() => handleStatusChange(user, 'ACTIVE')} disabled={actionLoading} />
+                      ) : null}
+                      {user.status !== 'BANNED' && (
+                        <ActionBtn label={t('admin.ban')} variant="danger" onClick={() => handleStatusChange(user, 'BANNED')} disabled={actionLoading} />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -218,9 +282,18 @@ export default function UserManagement() {
         )}
       </div>
 
+      {/* Photo modal */}
+      {photoModalPhotos && (
+        <PhotoModal
+          photos={photoModalPhotos}
+          initialIndex={photoModalIndex}
+          onClose={() => setPhotoModalPhotos(null)}
+        />
+      )}
+
       {/* Grant Premium Modal */}
       {modalType === 'grant' && selectedUser && (
-        <Modal onClose={() => setModalType(null)}>
+        <BottomSheet onClose={() => setModalType(null)}>
           <h3 className="font-bold text-tg-text mb-3">{t('admin.grantPremium')}: {selectedUser.firstName}</h3>
           <label className="text-xs text-tg-hint">{t('admin.grantDuration')}</label>
           <select value={grantDays} onChange={(e) => setGrantDays(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl bg-tg-secondary-bg text-tg-text text-sm mb-2">
@@ -234,12 +307,12 @@ export default function UserManagement() {
           <button onClick={handleGrantPremium} disabled={actionLoading} className="btn-primary w-full py-2.5 text-sm">
             {actionLoading ? '...' : t('admin.grantPremium')}
           </button>
-        </Modal>
+        </BottomSheet>
       )}
 
       {/* Send Message Modal */}
       {modalType === 'message' && selectedUser && (
-        <Modal onClose={() => { setModalType(null); setMessageText(''); }}>
+        <BottomSheet onClose={() => { setModalType(null); setMessageText(''); }}>
           <h3 className="font-bold text-tg-text mb-3">{t('admin.sendMessage')}: {selectedUser.firstName}</h3>
           <textarea
             value={messageText}
@@ -251,8 +324,26 @@ export default function UserManagement() {
           <button onClick={handleSendMessage} disabled={actionLoading || !messageText.trim()} className="btn-primary w-full py-2.5 text-sm">
             {actionLoading ? '...' : t('admin.send')}
           </button>
-        </Modal>
+        </BottomSheet>
       )}
+    </div>
+  );
+}
+
+function Avatar({ photo, name }: { photo?: Photo; name: string }) {
+  if (photo) {
+    return (
+      <img src={photo.url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0 bg-tg-secondary-bg" />
+    );
+  }
+  const initials = name.slice(0, 2).toUpperCase();
+  const hue = name.charCodeAt(0) * 7 % 360;
+  return (
+    <div
+      className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
+      style={{ backgroundColor: `hsl(${hue}, 60%, 50%)` }}
+    >
+      {initials}
     </div>
   );
 }
@@ -264,7 +355,7 @@ function StatusBadge({ status }: { status: string }) {
     BANNED: 'bg-red-500/20 text-red-700',
   };
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${colors[status] || 'bg-tg-secondary-bg text-tg-hint'}`}>
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${colors[status] || 'bg-tg-secondary-bg text-tg-hint'}`}>
       {status}
     </span>
   );
@@ -276,11 +367,11 @@ function ActionBtn({ label, onClick, variant, disabled }: { label: string; onCli
   return <button onClick={onClick} disabled={disabled} className={`${base} ${colors} disabled:opacity-50`}>{label}</button>;
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full max-w-lg bg-tg-bg rounded-t-2xl p-5 pb-8 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-lg bg-tg-bg rounded-t-2xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>
