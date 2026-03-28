@@ -62,10 +62,10 @@ bot.command('start', async (ctx) => {
     {
       reply_markup: {
         keyboard: [
-          [{ text: '🔍 Open Tanish', web_app: { url: WEBAPP_URL } }],
+          [{ text: '🚀 Open Tanish', web_app: { url: WEBAPP_URL } }],
         ],
         resize_keyboard: true,
-        one_time_keyboard: false,
+        is_persistent: true,
       },
     }
   );
@@ -232,6 +232,19 @@ async function start() {
     { command: 'referral', description: 'Get your referral link' },
     { command: 'help', description: 'How to use Tanish' },
   ]);
+
+  // Set the menu button (bottom-left hamburger) to open Mini App
+  try {
+    await bot.api.setChatMenuButton({
+      menu_button: {
+        type: 'web_app',
+        text: 'Open Tanish',
+        web_app: { url: WEBAPP_URL },
+      },
+    });
+  } catch (err) {
+    console.warn('Failed to set menu button:', err);
+  }
 
   // Start notification worker (requires REDIS_URL)
   if (process.env.REDIS_URL) {
