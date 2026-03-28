@@ -50,9 +50,15 @@ bot.command('start', async (ctx) => {
   }
 
   await ctx.reply(
-    '👋 Welcome to Tanish!\n\n' +
-    'Discover amazing people around you — professionals, creatives, and like-minded individuals in Tashkent.\n\n' +
-    'Tap the button below to get started! 👇',
+    'Tanishga xush kelibsiz! 🤝\n\n' +
+    'Qiziqarli odamlarni toping — kasb, qiziqishlar va maqsadlar bo\'yicha mos keladigan insonlar bilan tanishing.\n\n' +
+    '———\n\n' +
+    'Добро пожаловать в Tanish! 🤝\n\n' +
+    'Находите интересных людей — знакомьтесь с теми, кто разделяет ваши интересы и цели.\n\n' +
+    '———\n\n' +
+    'Welcome to Tanish! 🤝\n\n' +
+    'Discover interesting people — connect with those who share your interests, profession, and goals.\n\n' +
+    '👇',
     {
       reply_markup: {
         keyboard: [
@@ -77,17 +83,17 @@ bot.command('profile', async (ctx) => {
 // /help command
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    '🆘 *Tanish Help*\n\n' +
-    '• /start — Open the Tanish app\n' +
-    '• /profile — Edit your profile\n' +
-    '• /help — Show this help message\n\n' +
-    '*How it works:*\n' +
-    '1️⃣ Complete your profile\n' +
-    '2️⃣ Every day you get curated matches\n' +
-    '3️⃣ Say hi with an icebreaker question\n' +
-    '4️⃣ Both answer → chat is unlocked!\n\n' +
-    '🔒 *Safety*: Report or block anyone who makes you uncomfortable.\n\n' +
-    'Questions? Contact @TanishSupport',
+    '🆘 *Tanish — Yordam / Помощь / Help*\n\n' +
+    '• /start — Ilovani ochish / Открыть / Open\n' +
+    '• /profile — Profilni tahrirlash / Профиль / Edit profile\n' +
+    '• /referral — Taklif havolasi / Реферальная ссылка / Referral link\n\n' +
+    '*Qanday ishlaydi? / Как работает? / How it works:*\n' +
+    '1️⃣ Profilingizni to\'ldiring\n' +
+    '2️⃣ Har kuni yangi tanishuvlar\n' +
+    '3️⃣ Savol bilan salomlashing\n' +
+    '4️⃣ Ikkalangiz javob bering → suhbat ochiladi!\n\n' +
+    '🔒 Xavfsizlik: Noqulay foydalanuvchilarni shikoyat qiling yoki bloklang.\n\n' +
+    'Savollar? / Вопросы? / Questions?\n@TanishSupport',
     { parse_mode: 'Markdown' }
   );
 });

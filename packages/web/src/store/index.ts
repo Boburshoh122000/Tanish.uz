@@ -6,9 +6,11 @@ interface AppState {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authError: boolean;
   setUser: (user: UserProfile) => void;
   setAuthenticated: (auth: boolean) => void;
   setLoading: (loading: boolean) => void;
+  setAuthError: (error: boolean) => void;
 
   // Onboarding
   onboardingData: Partial<OnboardingData>;
@@ -40,9 +42,11 @@ export const useAppStore = create<AppState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  authError: false,
   setUser: (user) => set({ user }),
   setAuthenticated: (auth) => set({ isAuthenticated: auth }),
   setLoading: (loading) => set({ isLoading: loading }),
+  setAuthError: (error) => set({ authError: error }),
 
   // Onboarding
   onboardingData: {},

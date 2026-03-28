@@ -106,7 +106,7 @@ function Layout() {
 
 export default function App() {
   const { t } = useTranslation();
-  const { isLoading, setUser, setAuthenticated, setLoading } = useAppStore();
+  const { isLoading, setUser, setAuthenticated, setLoading, setAuthError } = useAppStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -117,19 +117,31 @@ export default function App() {
   }, []);
 
   async function authenticate() {
-    try {
-      const initData = WebApp.initData;
-      if (!initData) {
-        if (import.meta.env.DEV) {
-          setLoading(false);
-          return;
-        }
-        setLoading(false);
-        return;
-      }
+    console.log('[AUTH] Starting authentication...');
+    console.log('[AUTH] initData length:', WebApp.initData?.length ?? 0);
+    console.log('[AUTH] platform:', WebApp.platform);
 
-      const res = await api.auth.telegram(initData) as { success: boolean; data?: { token: string; user: Parameters<typeof setUser>[0]; onboardingComplete: boolean } };
+    // Wait briefly for SDK to populate initData
+    let initData = WebApp.initData;
+    if (!initData) {
+      await new Promise((r) => setTimeout(r, 300));
+      initData = WebApp.initData;
+      console.log('[AUTH] After delay, initData length:', initData?.length ?? 0);
+    }
+
+    if (!initData) {
+      console.log('[AUTH] No initData — not in Telegram');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('[AUTH] Sending initData to API...');
+      const res = await api.auth.telegram(initData) as { success: boolean; data?: { token: string; user: Parameters<typeof setUser>[0]; onboardingComplete: boolean }; error?: string };
+      console.log('[AUTH] Response success:', res.success);
+
       if (res.success && res.data) {
+        console.log('[AUTH] Authenticated as:', res.data.user?.firstName);
         setAuthToken(res.data.token);
         setUser(res.data.user);
         setAuthenticated(true);
@@ -137,14 +149,13 @@ export default function App() {
         if (!res.data.onboardingComplete) {
           navigate('/onboarding');
         }
+      } else {
+        console.error('[AUTH] API returned failure:', res.error);
+        setAuthError(true);
       }
     } catch (err) {
-      console.error('Auth failed:', err);
-      WebApp.showPopup({
-        title: t('common.error'),
-        message: t('common.retry'),
-        buttons: [{ type: 'close' }],
-      });
+      console.error('[AUTH] Exception:', err);
+      setAuthError(true);
     } finally {
       setLoading(false);
     }
