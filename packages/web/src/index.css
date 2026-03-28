@@ -12,6 +12,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -29,30 +33,89 @@ body {
   padding-bottom: var(--safe-area-bottom);
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: var(--tg-theme-hint-color, #ccc);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
-/* Chip component */
+/* ═══ Animations ═══ */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes goldShimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--tg-theme-secondary-bg-color, #f0f0f0) 25%,
+    var(--tg-theme-bg-color, #fff) 50%,
+    var(--tg-theme-secondary-bg-color, #f0f0f0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Founder badge shimmer */
+.badge-founder {
+  background: linear-gradient(
+    110deg,
+    #f59e0b 0%, #fbbf24 25%, #fef3c7 50%, #fbbf24 75%, #f59e0b 100%
+  );
+  background-size: 200% 100%;
+  animation: goldShimmer 3s ease-in-out infinite;
+  color: white;
+}
+
+/* Gradient text helper */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Safe area padding for bottom nav */
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+}
+
+/* ═══ Components ═══ */
+
 @layer components {
   .chip {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium 
-           transition-all duration-200 cursor-pointer select-none;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium
+           transition-all duration-200 cursor-pointer select-none
+           active:scale-95;
   }
 
   .chip-selected {
@@ -60,7 +123,7 @@ html {
   }
 
   .chip-unselected {
-    @apply bg-tg-secondary-bg text-tg-text hover:opacity-80;
+    @apply bg-tg-secondary-bg text-tg-text;
   }
 
   .chip-shared {
@@ -101,5 +164,15 @@ html {
 
   .card {
     @apply bg-tg-section-bg rounded-2xl overflow-hidden shadow-sm;
+  }
+
+  /* Section header with accent bar */
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-wider text-tg-section-header
+           flex items-center gap-2;
+  }
+  .section-header::before {
+    content: '';
+    @apply w-0.5 h-3.5 rounded-full bg-tg-button inline-block;
   }
 }
