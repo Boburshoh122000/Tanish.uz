@@ -30,6 +30,7 @@ export default function MyProfilePage() {
 
   const ownProfile: PublicProfile = {
     id: user.id,
+    username: user.username ?? null,
     firstName: user.firstName,
     lastName: user.lastName ?? null,
     gender: user.gender,

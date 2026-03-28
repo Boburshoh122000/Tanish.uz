@@ -11,7 +11,7 @@ export default function BottomNav() {
   const tabs = [
     { path: '/discovery', i18nKey: 'nav.discover', Icon: CompassIcon, badge: 0 },
     { path: '/intros', i18nKey: 'nav.intros', Icon: ChatBubbleIcon, badge: pendingIntros.length },
-    { path: '/profile', i18nKey: 'nav.profile', Icon: PersonIcon, badge: 0 },
+    { path: '/profile/edit', i18nKey: 'nav.profile', Icon: PersonIcon, badge: 0 },
     { path: '/settings', i18nKey: 'nav.settings', Icon: GearIcon, badge: 0 },
   ];
 

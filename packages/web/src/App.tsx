@@ -6,7 +6,6 @@ import { useAppStore } from './store';
 import { api, setAuthToken } from './lib/api';
 import OnboardingPage from './pages/onboarding/OnboardingPage';
 import DiscoveryPage from './pages/discovery/DiscoveryPage';
-import MyProfilePage from './pages/profile/MyProfilePage';
 import ProfileEditPage from './pages/profile/ProfileEditPage';
 import ProfileViewPage from './pages/profile/ProfileViewPage';
 import IntrosPage from './pages/intros/IntrosPage';
@@ -54,21 +53,45 @@ function AdminGuard() {
 }
 
 function AuthGuard() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAppStore();
-  // Block unauthenticated users from reaching protected routes
+
   if (!isAuthenticated || !user) {
+    // Detect whether we're actually inside Telegram
+    const inTelegram = !!WebApp.initData;
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen pb-20 px-6 text-center">
-        <span className="text-5xl mb-4">🔒</span>
-        <h2 className="text-lg font-bold text-tg-text mb-2">Open via Telegram</h2>
-        <p className="text-sm text-tg-hint">Please open Tanish through the Telegram bot.</p>
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-tg-secondary-bg flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-tg-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </div>
+        {inTelegram ? (
+          <>
+            <h2 className="text-lg font-bold text-tg-text mb-1">{t('auth.connectionFailed')}</h2>
+            <p className="text-sm text-tg-hint mb-4">{t('auth.connectionFailedHint')}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 bg-tg-button text-tg-button-text rounded-xl font-medium"
+            >
+              {t('common.retry')}
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-bold text-tg-text mb-1">{t('auth.openViaTelegram')}</h2>
+            <p className="text-sm text-tg-hint">{t('auth.openViaTelegramHint')}</p>
+          </>
+        )}
       </div>
     );
   }
-  // If user exists but hasn't completed onboarding, force them there.
+
   if (!user.profileComplete) {
     return <Navigate to="/onboarding" replace />;
   }
+
   return <Outlet />;
 }
 
@@ -146,7 +169,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/discovery" element={<DiscoveryPage />} />
           <Route path="/intros" element={<IntrosPage />} />
-          <Route path="/profile" element={<MyProfilePage />} />
+          <Route path="/profile" element={<Navigate to="/profile/edit" replace />} />
           {/* /profile/edit MUST come before /profile/:id — otherwise "edit" is captured as an :id param */}
           <Route path="/profile/edit" element={<ProfileEditPage />} />
           <Route path="/profile/:id" element={<ProfileViewPage />} />

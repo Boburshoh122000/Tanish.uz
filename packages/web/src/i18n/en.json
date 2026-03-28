@@ -19,6 +19,13 @@
     "premium": "Premium"
   },
 
+  "auth": {
+    "connectionFailed": "Connection failed",
+    "connectionFailedHint": "Could not connect to Tanish. Please try again.",
+    "openViaTelegram": "Open via Telegram",
+    "openViaTelegramHint": "Search for @get_to_knowbot on Telegram to use Tanish"
+  },
+
   "onboarding": {
     "progress": "Step {{current}} of {{total}}",
     "step1": {

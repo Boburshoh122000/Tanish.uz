@@ -19,6 +19,13 @@
     "premium": "Premium"
   },
 
+  "auth": {
+    "connectionFailed": "Ulanish xatosi",
+    "connectionFailedHint": "Tanish'ga ulanib bo'lmadi. Iltimos, qayta urinib ko'ring.",
+    "openViaTelegram": "Telegram orqali oching",
+    "openViaTelegramHint": "Tanish'dan foydalanish uchun Telegram'da @get_to_knowbot'ni qidiring"
+  },
+
   "onboarding": {
     "progress": "{{current}}/{{total}}-qadam",
     "step1": {

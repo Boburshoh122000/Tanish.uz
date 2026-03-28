@@ -102,7 +102,7 @@ export default function ProfileEditPage() {
   // Telegram BackButton
   useEffect(() => {
     WebApp.BackButton.show();
-    const goBack = () => navigate('/profile');
+    const goBack = () => navigate('/discovery');
     WebApp.BackButton.onClick(goBack);
     return () => {
       WebApp.BackButton.hide();
@@ -211,7 +211,8 @@ export default function ProfileEditPage() {
     })) as { success: boolean; data?: UserProfile };
     if (res.success && res.data) {
       setUser(res.data);
-      navigate('/profile');
+      WebApp.HapticFeedback.notificationOccurred('success');
+      navigate('/discovery');
     }
     setSaving(false);
   }, [
