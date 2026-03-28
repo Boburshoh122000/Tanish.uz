@@ -142,12 +142,29 @@ export default function ProfileEditPage() {
   // Photo delete (long-press)
   const handlePhotoDelete = useCallback(async (photoId: string) => {
     WebApp.showConfirm(t('profile.deletePhotoConfirm'), async (confirmed) => {
-      if (!confirmed) return;
-      await api.photos.delete(photoId);
+      if (!confirmed) {
+        setLongPressId(null);
+        return;
+      }
+
+      const previousPhotos = [...photos];
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
       setLongPressId(null);
+
+      try {
+        const res = await api.photos.delete(photoId) as { success: boolean; error?: string };
+        if (!res.success) {
+          setPhotos(previousPhotos);
+          WebApp.HapticFeedback.notificationOccurred('error');
+          const msg = typeof res.error === 'string' ? res.error : (res.error as any)?.message || t('common.error');
+          WebApp.showPopup({ title: t('common.error'), message: msg, buttons: [{ type: 'ok' }] });
+        }
+      } catch {
+        setPhotos(previousPhotos);
+        WebApp.HapticFeedback.notificationOccurred('error');
+      }
     });
-  }, [t]);
+  }, [photos, t]);
 
   const startLongPress = useCallback((photoId: string) => {
     longPressTimer.current = setTimeout(() => setLongPressId(photoId), 500);
