@@ -12,7 +12,7 @@ export const telegramAuthSchema = z.object({
 export const onboardingSchema = z.object({
   gender: z.enum(['MALE', 'FEMALE']),
   lookingFor: z.array(z.enum(['NETWORKING', 'FRIENDSHIP', 'RELATIONSHIP'])).min(1, 'Select at least one'),
-  city: z.enum(CITIES as unknown as [string, ...string[]]).default('Tashkent'),
+  city: z.string().min(1, 'City is required').max(100).default('Tashkent'),
   birthDate: z.string().refine((val) => {
     const date = new Date(val);
     const age = Math.floor((Date.now() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
@@ -40,7 +40,7 @@ export const profileUpdateSchema = z.object({
   currentRole: z.string().max(LIMITS.ROLE_MAX_LENGTH).nullable().optional(),
   university: z.string().max(100).nullable().optional(),
   workplace: z.string().max(100).nullable().optional(),
-  city: z.enum(CITIES as unknown as [string, ...string[]]).optional(),
+  city: z.string().min(1).max(100).optional(),
   lookingFor: z.array(z.enum(['NETWORKING', 'FRIENDSHIP', 'RELATIONSHIP'])).min(1).optional(),
   languages: z.array(z.enum(['UZBEK', 'RUSSIAN', 'ENGLISH'])).min(1).optional(),
   interestIds: z.array(z.string()).min(LIMITS.MIN_INTERESTS).max(LIMITS.MAX_INTERESTS).optional(),

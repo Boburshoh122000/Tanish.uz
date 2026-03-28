@@ -15,6 +15,7 @@ import {
   type InterestWithCategory,
   type UserProfile,
 } from '@tanish/shared';
+import ComboInput from '@/components/ComboInput';
 
 const LOOKING_FOR_OPTIONS: { value: LookingFor; emoji: string; key: string }[] = [
   { value: LookingFor.NETWORKING, emoji: '💼', key: 'networking' },
@@ -365,17 +366,12 @@ export default function ProfileEditPage() {
               />
             </Field>
             <Field label={t('profile.city')}>
-              <select
+              <ComboInput
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="input-field appearance-none"
-              >
-                {CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={setCity}
+                suggestions={CITIES}
+                placeholder="e.g. Tashkent"
+              />
             </Field>
           </div>
         </Section>
@@ -404,18 +400,12 @@ export default function ProfileEditPage() {
               </span>
             </Field>
             <Field label={t('profile.university')}>
-              <select
+              <ComboInput
                 value={university}
-                onChange={(e) => setUniversity(e.target.value)}
-                className="input-field appearance-none"
-              >
-                <option value="">{t('common.optional')}</option>
-                {UNIVERSITIES.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
+                onChange={setUniversity}
+                suggestions={UNIVERSITIES}
+                placeholder={t('common.optional')}
+              />
             </Field>
           </div>
         </Section>

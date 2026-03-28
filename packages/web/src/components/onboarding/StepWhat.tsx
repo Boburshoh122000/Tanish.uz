@@ -1,5 +1,6 @@
 import { useAppStore } from '../../store';
-import { CITIES } from '@tanish/shared';
+import { CITIES, UNIVERSITIES } from '@tanish/shared';
+import ComboInput from '../ComboInput';
 
 interface StepProps { onNext: () => void; }
 
@@ -18,15 +19,12 @@ export default function StepWhat({ onNext }: StepProps) {
         <label className="text-sm font-semibold text-tg-section-header uppercase tracking-wide">
           City
         </label>
-        <select
+        <ComboInput
           value={onboardingData.city || 'Tashkent'}
-          onChange={(e) => setOnboardingData({ city: e.target.value })}
-          className="input-field appearance-none"
-        >
-          {CITIES.map((city) => (
-            <option key={city} value={city}>{city}</option>
-          ))}
-        </select>
+          onChange={(v) => setOnboardingData({ city: v })}
+          suggestions={CITIES}
+          placeholder="e.g. Tashkent"
+        />
       </div>
 
       {/* Birth Date */}
@@ -68,12 +66,11 @@ export default function StepWhat({ onNext }: StepProps) {
         <label className="text-sm font-semibold text-tg-section-header uppercase tracking-wide">
           University <span className="text-tg-hint font-normal">(optional)</span>
         </label>
-        <input
-          type="text"
+        <ComboInput
           value={onboardingData.university || ''}
-          onChange={(e) => setOnboardingData({ university: e.target.value })}
-          placeholder="e.g. WIUT, Inha, TEAM"
-          className="input-field"
+          onChange={(v) => setOnboardingData({ university: v })}
+          suggestions={UNIVERSITIES}
+          placeholder="Type or select your university"
         />
       </div>
     </div>
