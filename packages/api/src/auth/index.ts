@@ -41,11 +41,13 @@ export function validateInitData(initData: string): TelegramUser | null {
 
     if (calculatedHash !== hash) return null;
 
-    // Check auth_date is not too old (5 minutes)
+    // Reject initData older than 30 minutes.
+    // auth_date is set when the Mini App opens; users may take a few minutes
+    // to load, so 5 min is too tight. 30 min balances security vs. UX.
     const authDate = params.get('auth_date');
     if (authDate) {
       const authTimestamp = parseInt(authDate, 10) * 1000;
-      if (Date.now() - authTimestamp > 60 * 60 * 1000) return null;
+      if (Date.now() - authTimestamp > 30 * 60 * 1000) return null;
     }
 
     const userStr = params.get('user');
@@ -93,7 +95,7 @@ export async function authMiddleware(
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, telegramId: true, status: true },
+    select: { id: true, telegramId: true, status: true, lastActiveAt: true },
   });
 
   if (!user) {
@@ -104,11 +106,15 @@ export async function authMiddleware(
     return reply.status(403).send({ success: false, error: 'Account has been banned' });
   }
 
-  // Update last active
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastActiveAt: new Date() },
-  });
+  // Throttle lastActiveAt writes to once per 5 minutes to reduce DB load.
+  // With 1000 DAU × 20 req/day, this cuts UPDATE queries from 20k to ~2k/day.
+  const ACTIVE_THROTTLE_MS = 5 * 60 * 1000;
+  if (Date.now() - user.lastActiveAt.getTime() > ACTIVE_THROTTLE_MS) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastActiveAt: new Date() },
+    });
+  }
 
   request.userId = user.id;
   request.telegramId = user.telegramId;

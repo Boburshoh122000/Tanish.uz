@@ -52,8 +52,8 @@ export default function OnboardingPage() {
       setIsSubmitting(true);
       try {
         const ref = refCode.current;
-        const res = await api.onboarding.complete(onboardingData, ref) as any;
-        if (res.success) {
+        const res = await api.onboarding.complete(onboardingData, ref) as { success: boolean; data?: Parameters<typeof setUser>[0]; error?: string };
+        if (res.success && res.data) {
           setUser(res.data);
           WebApp.HapticFeedback.impactOccurred('medium');
           navigate('/discovery');

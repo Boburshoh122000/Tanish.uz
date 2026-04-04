@@ -1,4 +1,4 @@
-import type { DailyBatchData, PublicProfile } from '@tanish/shared';
+import type { DailyBatchData, OnboardingData, ProfileUpdateInput, NotificationPrefsInput } from '@tanish/shared';
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
@@ -67,13 +67,13 @@ export const api = {
 
   users: {
     me: () => request('/users/me'),
-    update: (data: any) =>
+    update: (data: ProfileUpdateInput) =>
       request('/users/me', {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     getPublic: (id: string) => request(`/users/${id}`),
-    updateNotifications: (data: any) =>
+    updateNotifications: (data: NotificationPrefsInput) =>
       request('/users/me/notifications', {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -83,7 +83,7 @@ export const api = {
   },
 
   onboarding: {
-    complete: (data: any, referralCode?: string | null) =>
+    complete: (data: Partial<OnboardingData>, referralCode?: string | null) =>
       request(`/onboarding/complete${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ''}`, {
         method: 'POST',
         body: JSON.stringify(data),
