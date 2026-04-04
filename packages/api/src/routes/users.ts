@@ -73,20 +73,23 @@ export async function userRoutes(app: FastifyInstance) {
       },
     });
 
-    // Update interests if provided
+    // Update interests if provided (atomic delete + create)
     if (interestIds) {
-      await prisma.userInterest.deleteMany({ where: { userId } });
-      await prisma.userInterest.createMany({
-        data: interestIds.map((interestId) => ({ userId, interestId })),
-      });
+      await prisma.$transaction([
+        prisma.userInterest.deleteMany({ where: { userId } }),
+        prisma.userInterest.createMany({
+          data: interestIds.map((interestId) => ({ userId, interestId })),
+        }),
+      ]);
     }
 
-    // Recalculate profile completeness
+    // Recalculate profile completeness — can go both directions
     const profileScore = calculateProfileCompleteness(user);
-    if (profileScore >= 0.85 && !user.profileComplete) {
+    const shouldBeComplete = profileScore >= 0.85;
+    if (shouldBeComplete !== user.profileComplete) {
       await prisma.user.update({
         where: { id: userId },
-        data: { profileComplete: true },
+        data: { profileComplete: shouldBeComplete },
       });
     }
 
@@ -118,6 +121,19 @@ export async function userRoutes(app: FastifyInstance) {
   app.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const userId = request.userId;
+
+    // Check if blocked in either direction
+    const block = await prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: userId, blockedId: id },
+          { blockerId: id, blockedId: userId },
+        ],
+      },
+    });
+    if (block) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id, status: 'ACTIVE' },
@@ -223,13 +239,19 @@ export async function userRoutes(app: FastifyInstance) {
   });
 }
 
-function calculateProfileCompleteness(user: any): number {
+function calculateProfileCompleteness(user: {
+  firstName: string;
+  bio: string | null;
+  currentRole: string | null;
+  photos: unknown[];
+  interests: unknown[];
+}): number {
   let score = 0;
   if (user.firstName) score += 0.10;
-  if (user.photos && user.photos.length > 0) score += 0.25;
+  if (user.photos.length > 0) score += 0.25;
   if (user.bio) score += 0.15;
   if (user.currentRole) score += 0.15;
-  if (user.interests && user.interests.length >= 5) score += 0.20;
-  if (user.photos && user.photos.length >= 2) score += 0.15;
+  if (user.interests.length >= 5) score += 0.20;
+  if (user.photos.length >= 2) score += 0.15;
   return score;
 }

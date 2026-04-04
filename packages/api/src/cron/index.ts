@@ -16,6 +16,21 @@ interface CronDeps {
 }
 
 const tasks: cron.ScheduledTask[] = [];
+const runningJobs = new Set<string>();
+
+/** Simple in-memory mutex to prevent overlapping cron executions */
+async function withLock(name: string, fn: () => Promise<void>): Promise<void> {
+  if (runningJobs.has(name)) {
+    console.log(`⏭️ [CRON] ${name} already running, skipping`);
+    return;
+  }
+  runningJobs.add(name);
+  try {
+    await fn();
+  } finally {
+    runningJobs.delete(name);
+  }
+}
 
 /**
  * Register all cron jobs. Call once on server start.
@@ -35,95 +50,65 @@ export function registerCronJobs(deps: CronDeps): void {
 
   // Daily metrics rollup — 02:00 UTC daily
   tasks.push(
-    cron.schedule('0 2 * * *', async () => {
+    cron.schedule('0 2 * * *', () => withLock('daily-metrics', async () => {
       console.log('⏰ [CRON] Daily metrics rollup...');
-      try {
-        await computeDailyMetrics(prisma);
-      } catch (err) {
-        console.error('[CRON] Daily metrics failed:', err);
-      }
-    })
+      await computeDailyMetrics(prisma);
+    }).catch((err) => console.error('[CRON] Daily metrics failed:', err)))
   );
 
   // ELO decay + Redis rebuild — 22:00 UTC (03:00 Tashkent)
   tasks.push(
-    cron.schedule('0 22 * * *', async () => {
+    cron.schedule('0 22 * * *', () => withLock('elo-decay', async () => {
       console.log('⏰ [CRON] ELO decay starting...');
-      try {
-        await processEloDecay(prisma, eloService);
-      } catch (err) {
-        console.error('[CRON] ELO decay failed:', err);
-      }
-    })
+      await processEloDecay(prisma, eloService);
+    }).catch((err) => console.error('[CRON] ELO decay failed:', err)))
   );
 
   // Daily batch generation — 04:00 UTC daily
   tasks.push(
-    cron.schedule('0 4 * * *', async () => {
+    cron.schedule('0 4 * * *', () => withLock('daily-batch', async () => {
       console.log('⏰ [CRON] Daily batch generation starting...');
-      try {
-        await generateDailyBatches(prisma);
-      } catch (err) {
-        console.error('[CRON] Daily batch generation failed:', err);
-      }
-    })
+      await generateDailyBatches(prisma);
+    }).catch((err) => console.error('[CRON] Daily batch generation failed:', err)))
   );
 
   // Intro expiry — every hour
   tasks.push(
-    cron.schedule('0 * * * *', async () => {
-      try {
-        await processIntroExpiry(prisma, eloService, webAppUrl);
-      } catch (err) {
-        console.error('[CRON] Intro expiry failed:', err);
-      }
-    })
+    cron.schedule('0 * * * *', () => withLock('intro-expiry', async () => {
+      await processIntroExpiry(prisma, eloService, webAppUrl);
+    }).catch((err) => console.error('[CRON] Intro expiry failed:', err)))
   );
 
   // Premium expiry — 05:00 UTC daily
   tasks.push(
-    cron.schedule('0 5 * * *', async () => {
+    cron.schedule('0 5 * * *', () => withLock('premium-expiry', async () => {
       console.log('⏰ [CRON] Premium expiry check...');
-      try {
-        await processPremiumExpiry(prisma, webAppUrl);
-      } catch (err) {
-        console.error('[CRON] Premium expiry failed:', err);
-      }
-    })
+      await processPremiumExpiry(prisma, webAppUrl);
+    }).catch((err) => console.error('[CRON] Premium expiry failed:', err)))
   );
 
   // Re-engagement — 06:00 UTC daily
   tasks.push(
-    cron.schedule('0 6 * * *', async () => {
+    cron.schedule('0 6 * * *', () => withLock('re-engagement', async () => {
       console.log('⏰ [CRON] Re-engagement starting...');
-      try {
-        await processReEngagement(prisma);
-      } catch (err) {
-        console.error('[CRON] Re-engagement failed:', err);
-      }
-    })
+      await processReEngagement(prisma);
+    }).catch((err) => console.error('[CRON] Re-engagement failed:', err)))
   );
 
   // Daily likes reset — 00:00 UTC (05:00 Tashkent)
   tasks.push(
-    cron.schedule('0 0 * * *', async () => {
-      try {
-        const { count } = await prisma.user.updateMany({ where: { dailyLikesUsed: { gt: 0 } }, data: { dailyLikesUsed: 0 } });
-        if (count > 0) console.log(`[CRON] Reset dailyLikesUsed for ${count} users`);
-      } catch (err) { console.error('[CRON] Daily likes reset failed:', err); }
-    })
+    cron.schedule('0 0 * * *', () => withLock('likes-reset', async () => {
+      const { count } = await prisma.user.updateMany({ where: { dailyLikesUsed: { gt: 0 } }, data: { dailyLikesUsed: 0 } });
+      if (count > 0) console.log(`[CRON] Reset dailyLikesUsed for ${count} users`);
+    }).catch((err) => console.error('[CRON] Daily likes reset failed:', err)))
   );
 
   // Weekly spark — Fridays 13:00 UTC (18:00 Tashkent)
   tasks.push(
-    cron.schedule('0 13 * * 5', async () => {
+    cron.schedule('0 13 * * 5', () => withLock('weekly-spark', async () => {
       console.log('⏰ [CRON] Weekly spark starting...');
-      try {
-        await processWeeklySpark(prisma);
-      } catch (err) {
-        console.error('[CRON] Weekly spark failed:', err);
-      }
-    })
+      await processWeeklySpark(prisma);
+    }).catch((err) => console.error('[CRON] Weekly spark failed:', err)))
   );
 
   console.log(`✅ ${tasks.length} cron jobs registered`);

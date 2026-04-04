@@ -1,6 +1,40 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { prisma, bot, tracker } from '../index.js';
 import { EVENT_TYPES, LIMITS, PREMIUM_DURATION_DAYS } from '@tanish/shared';
+
+// ===== Admin request body schemas =====
+
+const reportActionSchema = z.object({
+  action: z.enum(['dismiss', 'warn', 'suspend', 'ban']),
+});
+
+const verificationReviewSchema = z.object({
+  approved: z.boolean(),
+  rejectionReason: z.string().max(500).optional(),
+});
+
+const grantPremiumSchema = z.object({
+  durationDays: z.number().int().min(1).max(365),
+  reason: z.string().max(500).optional(),
+});
+
+const sendMessageSchema = z.object({
+  text: z.string().min(1).max(4096),
+});
+
+const updateStatusSchema = z.object({
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']),
+});
+
+const broadcastSchema = z.object({
+  text: z.string().min(1).max(4096),
+  confirm: z.boolean().optional(),
+  filter: z.object({
+    isPremium: z.boolean().optional(),
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+  }).optional(),
+});
 
 const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_IDS || '')
   .split(',')
@@ -38,9 +72,10 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/metrics', async (request, reply) => {
     const { from, to } = request.query as { from?: string; to?: string };
 
-    const where: any = {};
-    if (from) where.date = { ...where.date, gte: new Date(from) };
-    if (to) where.date = { ...where.date, lte: new Date(to) };
+    const dateFilter: { gte?: Date; lte?: Date } = {};
+    if (from) dateFilter.gte = new Date(from);
+    if (to) dateFilter.lte = new Date(to);
+    const where = Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {};
 
     const metrics = await prisma.dailyMetrics.findMany({
       where,
@@ -124,7 +159,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { status } = request.query as { status?: string };
 
     const reports = await prisma.report.findMany({
-      where: { status: (status as any) || 'PENDING' },
+      where: { status: (status || 'PENDING') as 'PENDING' | 'REVIEWED' | 'ACTIONED' | 'DISMISSED' },
       include: {
         reporter: {
           select: { id: true, firstName: true, username: true },
@@ -147,7 +182,11 @@ export async function adminRoutes(app: FastifyInstance) {
   // PATCH /api/admin/reports/:id — action a report
   app.patch('/reports/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action } = request.body as { action: 'dismiss' | 'warn' | 'suspend' | 'ban' };
+    const parsed = reportActionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid action' });
+    }
+    const { action } = parsed.data;
 
     const report = await prisma.report.findUnique({
       where: { id },
@@ -306,10 +345,11 @@ export async function adminRoutes(app: FastifyInstance) {
   // PATCH /api/admin/verifications/:id — approve or reject
   app.patch('/verifications/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { approved, rejectionReason } = request.body as {
-      approved: boolean;
-      rejectionReason?: string;
-    };
+    const parsedBody = verificationReviewSchema.safeParse(request.body);
+    if (!parsedBody.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid review data' });
+    }
+    const { approved, rejectionReason } = parsedBody.data;
 
     const verification = await prisma.verification.findUnique({
       where: { id },
@@ -354,7 +394,7 @@ export async function adminRoutes(app: FastifyInstance) {
         const { bot } = await import('../index.js');
         try {
           await bot.api.sendMessage(
-            Number(user.telegramId),
+            user.telegramId.toString(),
             '✅ Your profile has been verified! You now have a verified badge.',
           );
         } catch {
@@ -380,7 +420,7 @@ export async function adminRoutes(app: FastifyInstance) {
         const reason = rejectionReason || 'Photo did not match profile';
         try {
           await bot.api.sendMessage(
-            Number(user.telegramId),
+            user.telegramId.toString(),
             `❌ Verification not approved: ${reason}\n\nYou can try again with a clearer selfie.`,
           );
         } catch {
@@ -407,7 +447,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (isPremium === 'true') where.isPremium = true;
     if (isPremium === 'false') where.isPremium = false;
@@ -493,12 +533,12 @@ export async function adminRoutes(app: FastifyInstance) {
   // POST /api/admin/users/:userId/grant-premium
   app.post('/users/:userId/grant-premium', async (request, reply) => {
     const { userId } = request.params as { userId: string };
-    const { durationDays, reason } = request.body as { durationDays: number; reason?: string };
-    const adminUserId = request.userId;
-
-    if (!durationDays || durationDays < 1 || durationDays > 365) {
+    const parsedGrant = grantPremiumSchema.safeParse(request.body);
+    if (!parsedGrant.success) {
       return reply.status(400).send({ success: false, error: 'durationDays must be 1-365' });
     }
+    const { durationDays, reason } = parsedGrant.data;
+    const adminUserId = request.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -539,7 +579,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
     try {
       await bot.api.sendMessage(
-        Number(user.telegramId),
+        user.telegramId.toString(),
         `🎁 You've been granted ${durationDays} days of Tanish Premium!`,
       );
     } catch { /* user may have blocked bot */ }
@@ -550,7 +590,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // POST /api/admin/users/:userId/revoke-premium
   app.post('/users/:userId/revoke-premium', async (request, reply) => {
     const { userId } = request.params as { userId: string };
-    const { reason } = (request.body as { reason?: string }) || {};
+    const { reason } = (z.object({ reason: z.string().max(500).optional() }).safeParse(request.body)).data ?? {};
     const adminUserId = request.userId;
 
     await prisma.user.update({
@@ -572,12 +612,12 @@ export async function adminRoutes(app: FastifyInstance) {
   // POST /api/admin/users/:userId/message — send Telegram message
   app.post('/users/:userId/message', async (request, reply) => {
     const { userId } = request.params as { userId: string };
-    const { text } = request.body as { text: string };
-    const adminUserId = request.userId;
-
-    if (!text || text.trim().length === 0) {
-      return reply.status(400).send({ success: false, error: 'Message text is required' });
+    const parsedMsg = sendMessageSchema.safeParse(request.body);
+    if (!parsedMsg.success) {
+      return reply.status(400).send({ success: false, error: 'Message text is required (max 4096 chars)' });
     }
+    const { text } = parsedMsg.data;
+    const adminUserId = request.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -589,7 +629,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
 
     try {
-      await bot.api.sendMessage(Number(user.telegramId), text, { parse_mode: 'HTML' });
+      await bot.api.sendMessage(user.telegramId.toString(), text, { parse_mode: 'HTML' });
 
       await prisma.event.create({
         data: {
@@ -600,8 +640,8 @@ export async function adminRoutes(app: FastifyInstance) {
       });
 
       return reply.send({ success: true, data: { delivered: true } });
-    } catch (err: any) {
-      const blocked = err?.error_code === 403;
+    } catch (err: unknown) {
+      const blocked = err instanceof Error && 'error_code' in err && (err as { error_code: number }).error_code === 403;
       return reply.send({
         success: true,
         data: { delivered: false, reason: blocked ? 'blocked' : 'send_failed' },
@@ -612,11 +652,11 @@ export async function adminRoutes(app: FastifyInstance) {
   // PATCH /api/admin/users/:userId/status — change user status
   app.patch('/users/:userId/status', async (request, reply) => {
     const { userId } = request.params as { userId: string };
-    const { status } = request.body as { status: 'ACTIVE' | 'SUSPENDED' | 'BANNED' };
-
-    if (!['ACTIVE', 'SUSPENDED', 'BANNED'].includes(status)) {
+    const parsedStatus = updateStatusSchema.safeParse(request.body);
+    if (!parsedStatus.success) {
       return reply.status(400).send({ success: false, error: 'Invalid status' });
     }
+    const { status } = parsedStatus.data;
 
     await prisma.user.update({
       where: { id: userId },
@@ -631,18 +671,14 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // POST /api/admin/broadcast — message all active users
   app.post('/broadcast', async (request, reply) => {
-    const { text, confirm, filter } = request.body as {
-      text: string;
-      confirm?: boolean;
-      filter?: { isPremium?: boolean; gender?: string };
-    };
+    const parsedBroadcast = broadcastSchema.safeParse(request.body);
+    if (!parsedBroadcast.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid broadcast data' });
+    }
+    const { text, confirm, filter } = parsedBroadcast.data;
     const adminUserId = request.userId;
 
-    if (!text || text.trim().length === 0) {
-      return reply.status(400).send({ success: false, error: 'Message text is required' });
-    }
-
-    const where: any = { status: 'ACTIVE', profileComplete: true };
+    const where: { status: 'ACTIVE'; profileComplete: boolean; isPremium?: boolean; gender?: 'MALE' | 'FEMALE' } = { status: 'ACTIVE', profileComplete: true };
     if (filter?.isPremium !== undefined) where.isPremium = filter.isPremium;
     if (filter?.gender) where.gender = filter.gender;
 
@@ -664,7 +700,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
     for (const user of recipients) {
       try {
-        await bot.api.sendMessage(Number(user.telegramId), text, { parse_mode: 'HTML' });
+        await bot.api.sendMessage(user.telegramId.toString(), text, { parse_mode: 'HTML' });
         delivered++;
       } catch {
         failed++;

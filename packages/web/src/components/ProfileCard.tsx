@@ -194,7 +194,7 @@ export default function ProfileCard({
 
         {/* Compatibility score */}
         {!isOwnProfile && profile.compatibilityScore != null && (
-          <p className="text-xs font-medium text-brand-600">
+          <p className="text-xs font-medium text-tg-link">
             {profile.compatibilityScore > 0.7
               ? `🔥 ${t('discovery.greatMatch')}`
               : `👍 ${t('discovery.goodMatch')}`}

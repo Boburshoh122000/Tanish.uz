@@ -4,7 +4,7 @@ import type { Worker } from 'bullmq';
 import Fastify from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { registerWebhook } from './register-webhook.js';
-import { PREMIUM_DURATION_DAYS } from '@tanish/shared';
+// PREMIUM_DURATION_DAYS now used in services/premium-activate.ts
 import { startNotificationWorker } from './queue/notification.queue.js';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
@@ -162,44 +162,12 @@ bot.on('message:successful_payment', async (ctx) => {
   if (!telegramId) return;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { telegramId: BigInt(telegramId) },
-      select: { id: true },
-    });
+    // Delegate all payment logic to PremiumService (single source of truth)
+    // This avoids duplicate writes if both bot handler and service are called
+    const { PremiumService } = await import('./services/premium-activate.js');
+    await PremiumService.activate(prisma, telegramId, payment.telegram_payment_charge_id, payment.total_amount);
 
-    if (!user) {
-      console.error(`Payment received but user not found: telegramId=${telegramId}`);
-      return;
-    }
-
-    const premiumUntil = new Date(Date.now() + PREMIUM_DURATION_DAYS * 24 * 60 * 60 * 1000);
-
-    // Activate premium
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { isPremium: true, premiumUntil },
-    });
-
-    // Log payment
-    await prisma.payment.create({
-      data: {
-        userId: user.id,
-        amount: payment.total_amount,
-        transactionId: payment.telegram_payment_charge_id,
-        plan: 'monthly',
-      },
-    });
-
-    // Track premium purchase event
-    await prisma.event.create({
-      data: {
-        userId: user.id,
-        type: 'premium_purchased',
-        metadata: { amount: payment.total_amount, transactionId: payment.telegram_payment_charge_id },
-      },
-    });
-
-    console.log(`⭐ Premium activated: user=${user.id}, amount=${payment.total_amount} Stars`);
+    console.log(`⭐ Premium activated: telegramId=${telegramId}, amount=${payment.total_amount} Stars`);
   } catch (err) {
     console.error('Payment processing failed:', err);
   }

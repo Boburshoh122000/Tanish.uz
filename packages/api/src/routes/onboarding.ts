@@ -54,14 +54,16 @@ export async function onboardingRoutes(app: FastifyInstance) {
       },
     });
 
-    // Set interests
-    await prisma.userInterest.deleteMany({ where: { userId } });
-    await prisma.userInterest.createMany({
-      data: interestIds.map((interestId) => ({ userId, interestId })),
-    });
+    // Set interests (atomic delete + create)
+    await prisma.$transaction([
+      prisma.userInterest.deleteMany({ where: { userId } }),
+      prisma.userInterest.createMany({
+        data: interestIds.map((interestId) => ({ userId, interestId })),
+      }),
+    ]);
 
     // Track event
-    const referralCode = (request.query as any)?.ref;
+    const referralCode = (request.query as { ref?: string })?.ref;
     tracker.track(EVENT_TYPES.ONBOARDING_COMPLETE, userId, {
       interestCount: interestIds.length,
       hasBio: !!cleanBio,

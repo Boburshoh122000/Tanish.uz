@@ -13,8 +13,9 @@ export async function premiumRoutes(app: FastifyInstance) {
     try {
       const status = await premiumService!.getStatus(userId);
       return reply.send({ success: true, data: status });
-    } catch (err: any) {
-      return reply.status(400).send({ success: false, error: err.message });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to get premium status';
+      return reply.status(400).send({ success: false, error: message });
     }
   });
 
@@ -26,8 +27,9 @@ export async function premiumRoutes(app: FastifyInstance) {
     try {
       const invoiceUrl = await premiumService!.createInvoice(userId, promo);
       return reply.send({ success: true, data: { invoiceUrl } });
-    } catch (err: any) {
-      return reply.status(400).send({ success: false, error: err.message });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create invoice';
+      return reply.status(400).send({ success: false, error: message });
     }
   });
 

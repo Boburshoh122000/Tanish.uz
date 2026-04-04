@@ -85,6 +85,15 @@ export async function photoRoutes(app: FastifyInstance) {
         });
       }
 
+      // Validate actual image content via magic bytes (not just mimetype header)
+      const metadata = await sharp(buffer).metadata();
+      if (!metadata.format || !['jpeg', 'png', 'webp'].includes(metadata.format)) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'INVALID_IMAGE', message: 'File is not a valid JPEG, PNG, or WebP image' },
+        });
+      }
+
       // Compress with sharp: resize to max dimension, output as WebP
       buffer = Buffer.from(
         await sharp(buffer)
@@ -164,19 +173,17 @@ export async function photoRoutes(app: FastifyInstance) {
     // Delete from database
     await prisma.photo.delete({ where: { id } });
 
-    // Reorder remaining photos
+    // Reorder remaining photos — batched transaction
     const remaining = await prisma.photo.findMany({
       where: { userId },
       orderBy: { position: 'asc' },
       select: { id: true, position: true },
     });
-    for (let i = 0; i < remaining.length; i++) {
-      if (remaining[i]!.position !== i) {
-        await prisma.photo.update({
-          where: { id: remaining[i]!.id },
-          data: { position: i },
-        });
-      }
+    const reorderOps = remaining
+      .filter((p, i) => p.position !== i)
+      .map((p, i) => prisma.photo.update({ where: { id: p.id }, data: { position: i } }));
+    if (reorderOps.length > 0) {
+      await prisma.$transaction(reorderOps);
     }
 
     return reply.send({ success: true, data: { deleted: true } });

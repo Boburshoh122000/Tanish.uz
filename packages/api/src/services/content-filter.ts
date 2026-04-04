@@ -47,39 +47,44 @@ export function filterContent(input: string): FilterResult {
   let text = input;
 
   // 1. Strip HTML tags
+  HTML_TAG_PATTERN.lastIndex = 0;
   if (HTML_TAG_PATTERN.test(text)) {
+    HTML_TAG_PATTERN.lastIndex = 0;
     text = text.replace(HTML_TAG_PATTERN, '');
     flags.push('html_stripped');
   }
 
   // 2. Replace URLs
+  URL_PATTERN.lastIndex = 0;
   if (URL_PATTERN.test(text)) {
+    URL_PATTERN.lastIndex = 0;
     text = text.replace(URL_PATTERN, '[link removed]');
     flags.push('url_removed');
   }
-  // Reset regex lastIndex
-  URL_PATTERN.lastIndex = 0;
 
   // 3. Replace phone numbers
+  PHONE_PATTERN.lastIndex = 0;
   if (PHONE_PATTERN.test(text)) {
+    PHONE_PATTERN.lastIndex = 0;
     text = text.replace(PHONE_PATTERN, '[number removed]');
     flags.push('phone_removed');
   }
-  PHONE_PATTERN.lastIndex = 0;
 
   // 4. Replace Telegram @usernames (in bios only — intros are fine)
+  TELEGRAM_USERNAME_PATTERN.lastIndex = 0;
   if (TELEGRAM_USERNAME_PATTERN.test(text)) {
+    TELEGRAM_USERNAME_PATTERN.lastIndex = 0;
     text = text.replace(TELEGRAM_USERNAME_PATTERN, '[username removed]');
     flags.push('username_removed');
   }
-  TELEGRAM_USERNAME_PATTERN.lastIndex = 0;
 
   // 5. Replace Instagram handles
+  INSTAGRAM_PATTERN.lastIndex = 0;
   if (INSTAGRAM_PATTERN.test(text)) {
+    INSTAGRAM_PATTERN.lastIndex = 0;
     text = text.replace(INSTAGRAM_PATTERN, '[social removed]');
     flags.push('instagram_removed');
   }
-  INSTAGRAM_PATTERN.lastIndex = 0;
 
   // 6. Check for profanity (flag, don't remove)
   const lowerText = text.toLowerCase();
@@ -109,14 +114,16 @@ export function filterIntroAnswer(input: string): FilterResult {
   let text = input;
 
   // Strip HTML
+  HTML_TAG_PATTERN.lastIndex = 0;
   text = text.replace(HTML_TAG_PATTERN, '');
 
   // Replace URLs
+  URL_PATTERN.lastIndex = 0;
   if (URL_PATTERN.test(text)) {
+    URL_PATTERN.lastIndex = 0;
     text = text.replace(URL_PATTERN, '[link removed]');
     flags.push('url_removed');
   }
-  URL_PATTERN.lastIndex = 0;
 
   // Check profanity (flag only)
   const lowerText = text.toLowerCase();

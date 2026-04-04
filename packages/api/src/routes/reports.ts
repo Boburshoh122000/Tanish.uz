@@ -38,24 +38,36 @@ export async function reportRoutes(app: FastifyInstance) {
       return reply.status(429).send({ success: false, error: 'Daily report limit reached' });
     }
 
+    // Check if this user already reported this person (prevent multi-report abuse)
+    const existingReport = await prisma.report.findFirst({
+      where: { reporterId: userId, reportedId },
+    });
+    if (existingReport) {
+      return reply.status(409).send({ success: false, error: 'You have already reported this user' });
+    }
+
     // Create report
     const report = await prisma.report.create({
       data: { reporterId: userId, reportedId, reason, details },
     });
 
-    // Increment report count on reported user
-    const reportedUser = await prisma.user.update({
+    // Count unique reporters (not total reports) for auto-suspension
+    const uniqueReporterCount = await prisma.report.groupBy({
+      by: ['reporterId'],
+      where: { reportedId },
+    });
+
+    // Update reportCount to reflect unique reporters
+    await prisma.user.update({
       where: { id: reportedId },
-      data: {
-        reportCount: { increment: 1 },
-      },
+      data: { reportCount: uniqueReporterCount.length },
     });
 
     // ELO penalty via service (handles clamping + Redis sync)
     await eloService.adjustScore(reportedId, 'reported', LIMITS.ELO_REPORTED);
 
-    // Auto-suspend if threshold reached
-    if (reportedUser.reportCount >= LIMITS.AUTO_SUSPEND_REPORT_THRESHOLD) {
+    // Auto-suspend if threshold reached (3 unique reporters)
+    if (uniqueReporterCount.length >= LIMITS.AUTO_SUSPEND_REPORT_THRESHOLD) {
       await prisma.user.update({
         where: { id: reportedId },
         data: { status: 'SUSPENDED' },

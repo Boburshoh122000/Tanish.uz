@@ -59,7 +59,8 @@ export type NotificationJobData =
 
 // ===== Constants =====
 
-export const QUEUE_NAME = 'tanish-notifications';
+// MUST match the queue name in @tanish/shared/queue/notification-types.ts
+export const QUEUE_NAME = 'tanish:notifications';
 const COOLDOWN_TTL_SECONDS = 120; // 2 min cooldown per user
 
 // ===== Redis Connection =====
@@ -144,22 +145,22 @@ export function startNotificationWorker(bot: Bot): Worker {
       switch (data.type) {
         case 'NEW_INTRO': {
           const d = data as IntroNotificationData;
-          await service.sendIntroNotification(tgId, d.senderName, d.introPreview, d.language as any, webappUrl);
+          await service.sendIntroNotification(tgId, d.senderName, d.introPreview, d.language as 'UZBEK' | 'RUSSIAN' | 'ENGLISH', webappUrl);
           break;
         }
         case 'MATCH': {
           const d = data as MatchNotificationData;
-          await service.sendMatchNotification(tgId, d.matchName, d.matchUsername, d.matchProfileId, d.language as any, webappUrl);
+          await service.sendMatchNotification(tgId, d.matchName, d.matchUsername, d.matchProfileId, d.language as 'UZBEK' | 'RUSSIAN' | 'ENGLISH', webappUrl);
           break;
         }
         case 'DAILY_BATCH': {
           const d = data as DailyBatchNotificationData;
-          await service.sendDailyBatchNotification(tgId, d.matchCount, d.language as any, webappUrl);
+          await service.sendDailyBatchNotification(tgId, d.matchCount, d.language as 'UZBEK' | 'RUSSIAN' | 'ENGLISH', webappUrl);
           break;
         }
         case 'EXPIRY_WARNING': {
           const d = data as ExpiryWarningData;
-          await service.sendExpiryWarning(tgId, d.senderName, d.language as any, webappUrl);
+          await service.sendExpiryWarning(tgId, d.senderName, d.language as 'UZBEK' | 'RUSSIAN' | 'ENGLISH', webappUrl);
           break;
         }
         case 'WEEKLY_SPARK':

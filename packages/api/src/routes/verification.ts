@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
-import crypto from 'node:crypto';
 import { authMiddleware } from '../auth/index.js';
 import { prisma, tracker } from '../index.js';
 import { LIMITS, EVENT_TYPES } from '@tanish/shared';
@@ -121,6 +120,15 @@ export async function verificationRoutes(app: FastifyInstance) {
         });
       }
 
+      // Validate actual image content via magic bytes
+      const metadata = await sharp(buffer).metadata();
+      if (!metadata.format || !['jpeg', 'png', 'webp'].includes(metadata.format)) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'INVALID_IMAGE', message: 'File is not a valid JPEG, PNG, or WebP image' },
+        });
+      }
+
       // Compress: resize + webp 80%
       buffer = Buffer.from(
         await sharp(buffer)
@@ -132,9 +140,8 @@ export async function verificationRoutes(app: FastifyInstance) {
           .toBuffer(),
       );
 
-      // Upload to R2 under verifications/ namespace
-      const key = `verifications/${userId}/${crypto.randomUUID()}.webp`;
-      const { url: selfieUrl } = await uploadToR2(key, buffer);
+      // Upload to R2 (reuses shared singleton client)
+      const { url: selfieUrl } = await uploadPhoto(`verify-${userId}`, buffer, 'image/webp');
 
       // Create verification record
       const verification = await prisma.verification.create({
@@ -204,38 +211,3 @@ export async function verificationRoutes(app: FastifyInstance) {
   });
 }
 
-// ───── Helper: upload buffer directly by key ──────────────────────
-
-async function uploadToR2(
-  key: string,
-  buffer: Buffer,
-): Promise<{ url: string }> {
-  // Re-use the existing uploadPhoto but with custom key
-  // We import the S3 client directly to set a custom key
-  const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-  const { getConfig } = await import('@tanish/shared');
-  const config = getConfig();
-
-  const client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${config.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: config.R2_ACCESS_KEY_ID!,
-      secretAccessKey: config.R2_SECRET_ACCESS_KEY!,
-    },
-  });
-
-  await client.send(new PutObjectCommand({
-    Bucket: config.R2_BUCKET_NAME,
-    Key: key,
-    Body: buffer,
-    ContentType: 'image/webp',
-    CacheControl: 'public, max-age=31536000, immutable',
-  }));
-
-  const url = config.R2_PUBLIC_URL
-    ? `${config.R2_PUBLIC_URL}/${key}`
-    : `https://${config.R2_BUCKET_NAME}.${config.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
-
-  return { url };
-}

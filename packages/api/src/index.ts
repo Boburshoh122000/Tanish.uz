@@ -53,7 +53,7 @@ const app = Fastify({
 
 // ===== Plugins =====
 await app.register(cors, {
-  origin: process.env.WEBAPP_URL || '*',
+  origin: process.env.WEBAPP_URL || 'https://tanish.uz',
   credentials: true,
 });
 
@@ -85,7 +85,7 @@ app.get('/api/health', async () => {
   let redis = false;
 
   try {
-    await prisma.$queryRawUnsafe('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     db = true;
   } catch { /* db unreachable */ }
 

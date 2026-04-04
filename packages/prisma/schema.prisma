@@ -218,6 +218,7 @@ model Report {
   createdAt  DateTime     @default(now())
 
   @@index([reportedId])
+  @@index([reporterId, createdAt])
 }
 
 model Block {

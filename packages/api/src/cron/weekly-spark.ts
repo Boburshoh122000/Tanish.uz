@@ -27,13 +27,14 @@ export async function processWeeklySpark(
   tracker?: TrackingService,
 ): Promise<{ sent: number }> {
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   let sent = 0;
 
   const matches = await prisma.intro.findMany({
     where: {
       status: 'MATCHED',
       chatUnlocked: true,
-      createdAt: { lt: threeDaysAgo },
+      createdAt: { lt: threeDaysAgo, gt: ninetyDaysAgo },
     },
     select: {
       id: true,

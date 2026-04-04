@@ -1,23 +1,24 @@
 import { PrismaClient } from '@prisma/client';
-import { EVENT_TYPES } from '@tanish/shared';
+import { EVENT_TYPES, PREMIUM_GRACE_PERIOD_DAYS } from '@tanish/shared';
 import { queuePremiumExpired } from '@tanish/shared/queue';
 import type { TrackingService } from '../services/tracking.service.js';
 
 /**
  * Check and expire premium subscriptions.
- * Runs daily.
+ * Runs daily. Applies PREMIUM_GRACE_PERIOD_DAYS (3 days) before deactivation.
  */
 export async function processPremiumExpiry(
   prisma: PrismaClient,
   webAppUrl: string,
   tracker?: TrackingService,
 ): Promise<{ expired: number }> {
-  const now = new Date();
+  // Only expire subscriptions past the grace period (premiumUntil + 3 days)
+  const graceDeadline = new Date(Date.now() - PREMIUM_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
 
   const expiredUsers = await prisma.user.findMany({
     where: {
       isPremium: true,
-      premiumUntil: { lt: now },
+      premiumUntil: { lt: graceDeadline },
     },
     select: {
       id: true,

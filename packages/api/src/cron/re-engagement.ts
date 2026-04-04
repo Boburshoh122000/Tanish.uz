@@ -3,11 +3,33 @@ import { queueReEngagement } from '@tanish/shared/queue';
 import { getRedis } from '../services/redis.js';
 
 const RE_ENGAGEMENT_MESSAGES = {
-  day3: 'Your matches are waiting! See who\'s interested in you 🔍',
-  day7: (count: number) => `You have ${count} unread intros. Come back and connect! 💬`,
-  day14: 'We miss you! Your profile is getting less visible. Open Tanish to stay in the game.',
-  day30: 'It\'s been a while! Your profile will be hidden from discovery soon. Tap to stay active.',
+  day3: {
+    en: 'Your matches are waiting! See who\'s interested in you 🔍',
+    ru: 'Ваши совпадения ждут! Посмотрите, кто вами заинтересовался 🔍',
+    uz: 'Tanishlaringiz kutmoqda! Kim qiziqayotganini ko\'ring 🔍',
+  },
+  day7: {
+    en: (count: number) => `You have ${count} unread intros. Come back and connect! 💬`,
+    ru: (count: number) => `У вас ${count} непрочитанных интро. Вернитесь и начните общаться! 💬`,
+    uz: (count: number) => `Sizda ${count} ta o'qilmagan tanishuv bor. Qaytib keling! 💬`,
+  },
+  day14: {
+    en: 'We miss you! Your profile is getting less visible. Open Tanish to stay in the game.',
+    ru: 'Мы скучаем! Ваш профиль становится менее заметным. Откройте Tanish.',
+    uz: 'Siz sog\'indingiz! Profilingiz kamroq ko\'rinmoqda. Tanish\'ni oching.',
+  },
+  day30: {
+    en: 'It\'s been a while! Your profile will be hidden from discovery soon. Tap to stay active.',
+    ru: 'Давно не виделись! Ваш профиль скоро скроется из подборок. Зайдите, чтобы остаться.',
+    uz: 'Anchadan beri ko\'rinmadingiz! Profilingiz tez orada yashirinadi. Faol qoling.',
+  },
 } as const;
+
+function getLang(language: string): 'en' | 'ru' | 'uz' {
+  if (language === 'ENGLISH' || language === 'en') return 'en';
+  if (language === 'UZBEK' || language === 'uz') return 'uz';
+  return 'ru';
+}
 
 const DEDUP_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -56,6 +78,7 @@ export async function processReEngagement(
       select: {
         id: true,
         telegramId: true,
+        preferredLanguage: true,
         _count: {
           select: {
             receivedIntros: {
@@ -74,14 +97,15 @@ export async function processReEngagement(
         const alreadySent = await redis.get(dedupKey);
         if (alreadySent) continue;
 
+        const lang = getLang(user.preferredLanguage || 'RUSSIAN');
         let message: string;
         if (range.key === 'day7') {
           const pendingCount = user._count.receivedIntros;
           message = pendingCount > 0
-            ? RE_ENGAGEMENT_MESSAGES.day7(pendingCount)
-            : RE_ENGAGEMENT_MESSAGES.day3;
+            ? RE_ENGAGEMENT_MESSAGES.day7[lang](pendingCount)
+            : RE_ENGAGEMENT_MESSAGES.day3[lang];
         } else {
-          message = RE_ENGAGEMENT_MESSAGES[range.key];
+          message = RE_ENGAGEMENT_MESSAGES[range.key][lang];
         }
 
         await queueReEngagement({

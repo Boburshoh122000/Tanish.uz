@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import WebApp from '@twa-dev/sdk';
 import en from './en.json';
 import ru from './ru.json';
 import uz from './uz.json';
@@ -21,17 +22,16 @@ function detectLanguage(): string {
     // localStorage may be unavailable in some contexts
   }
 
-  // Check Telegram WebApp
+  // Check Telegram WebApp via @twa-dev/sdk (static import at top)
   try {
-    const tg = (window as any).Telegram?.WebApp;
-    const langCode = tg?.initDataUnsafe?.user?.language_code;
+    const langCode = WebApp.initDataUnsafe?.user?.language_code;
     if (langCode) {
       if (langCode === 'uz') return 'uz';
       if (langCode === 'ru') return 'ru';
       if (langCode.startsWith('en')) return 'en';
     }
   } catch {
-    // Not in Telegram context
+    // Not in Telegram context or SDK not loaded
   }
 
   // Check browser language

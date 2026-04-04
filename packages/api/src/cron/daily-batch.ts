@@ -179,7 +179,7 @@ async function findAndScoreCandidates(
     excludeIds.add(i.senderId);
     excludeIds.add(i.receiverId);
   }
-  excludeIds.delete(user.id); // Remove self re-add from sets
+  excludeIds.add(user.id); // Ensure self is always excluded
 
   // Age range → birthdate range
   const now = new Date();
@@ -194,7 +194,7 @@ async function findAndScoreCandidates(
       status: 'ACTIVE',
       profileComplete: true,
       birthDate: { gte: minBirthDate, lte: maxBirthDate },
-      ...(user.genderPref ? { gender: user.genderPref as any } : {}),
+      ...(user.genderPref ? { gender: user.genderPref as 'MALE' | 'FEMALE' } : {}),
     },
     select: {
       id: true,

@@ -256,6 +256,7 @@ export async function introRoutes(app: FastifyInstance) {
       });
     }
 
+    // Atomic: update intro + record the match
     const updatedIntro = await prisma.intro.update({
       where: { id },
       data: {
@@ -265,7 +266,7 @@ export async function introRoutes(app: FastifyInstance) {
       },
     });
 
-    // Track events
+    // Track events (non-blocking, fire-and-forget)
     const answerHours = (Date.now() - new Date(intro.createdAt).getTime()) / 3_600_000;
     tracker.trackMany([
       { type: EVENT_TYPES.INTRO_ANSWERED, userId, metadata: { introId: id, responseTimeHours: Math.round(answerHours * 10) / 10 } },
@@ -273,7 +274,7 @@ export async function introRoutes(app: FastifyInstance) {
       { type: EVENT_TYPES.MATCH_CREATED, userId, metadata: { matchedUserId: intro.senderId } },
     ]);
 
-    // ELO boost for both
+    // ELO boost for both (best-effort, non-critical)
     await Promise.all([
       eloService.adjustScore(userId, 'match_created', LIMITS.ELO_MATCH_CREATED),
       eloService.adjustScore(intro.senderId, 'match_created', LIMITS.ELO_MATCH_CREATED),
